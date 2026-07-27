@@ -1,5 +1,5 @@
-import { describe, it, expect, afterAll } from 'vitest';
-import { mapConcurrent, forEachConcurrent } from '../src/index.js';
+import { afterAll, describe, expect, it } from 'vitest';
+import { forEachConcurrent, mapConcurrent } from '../src/index.js';
 
 const unhandled: unknown[] = [];
 const onUnhandled = (r: unknown) => unhandled.push(r);
@@ -56,7 +56,9 @@ describe('SC-17 iterable inputs', () => {
 
   it('generator (sync) works', async () => {
     function* gen() {
-      yield 'a'; yield 'b'; yield 'c';
+      yield 'a';
+      yield 'b';
+      yield 'c';
     }
     const r = await mapConcurrent(gen(), async (s) => s.toUpperCase());
     expect(r).toEqual(['A', 'B', 'C']);
@@ -113,7 +115,13 @@ describe('SC-18 forEachConcurrent memory bounds', () => {
     if (global.gc) global.gc();
     const before = process.memoryUsage().heapUsed;
     let count = 0;
-    await forEachConcurrent(gen(), async () => { count++; }, { concurrency: 4 });
+    await forEachConcurrent(
+      gen(),
+      async () => {
+        count++;
+      },
+      { concurrency: 4 },
+    );
     if (global.gc) global.gc();
     const after = process.memoryUsage().heapUsed;
     expect(count).toBe(N);

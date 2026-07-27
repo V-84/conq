@@ -1,3 +1,4 @@
+import { isAbortError } from './errors.js';
 /**
  * Retry helpers. The retry loop itself lives in `pool.ts` because retries
  * must interact with the shared admission-control gate — a retry re-acquires
@@ -6,9 +7,12 @@
  * defaults; it does not run tasks.
  */
 import { random } from './internal/random.js';
-import { validateFactor, validateNonNegativeFinite, validatePositiveIntOrInfinity } from './validate.js';
 import type { RetryOptions, Task, TaskContext } from './types.js';
-import { isAbortError } from './errors.js';
+import {
+  validateFactor,
+  validateNonNegativeFinite,
+  validatePositiveIntOrInfinity,
+} from './validate.js';
 
 export interface NormalizedRetry {
   attempts: number;
@@ -31,13 +35,18 @@ export const NO_RETRY: NormalizedRetry = {
 
 export function normalizeRetry(r?: RetryOptions): NormalizedRetry {
   if (!r) return NO_RETRY;
-  const attempts = r.attempts === undefined ? 1 : validatePositiveIntOrInfinity('attempts', r.attempts);
-  const minDelayMs = r.minDelayMs === undefined ? 100 : validateNonNegativeFinite('minDelayMs', r.minDelayMs);
-  const maxDelayMs = r.maxDelayMs === undefined ? 30_000 : validateNonNegativeFinite('maxDelayMs', r.maxDelayMs);
+  const attempts =
+    r.attempts === undefined ? 1 : validatePositiveIntOrInfinity('attempts', r.attempts);
+  const minDelayMs =
+    r.minDelayMs === undefined ? 100 : validateNonNegativeFinite('minDelayMs', r.minDelayMs);
+  const maxDelayMs =
+    r.maxDelayMs === undefined ? 30_000 : validateNonNegativeFinite('maxDelayMs', r.maxDelayMs);
   const factor = r.factor === undefined ? 2 : validateFactor('factor', r.factor);
   const jitter = r.jitter ?? 'full';
   if (jitter !== 'none' && jitter !== 'full' && jitter !== 'equal') {
-    throw new TypeError(`conq: 'jitter' must be 'none' | 'full' | 'equal', received ${String(jitter)}`);
+    throw new TypeError(
+      `conq: 'jitter' must be 'none' | 'full' | 'equal', received ${String(jitter)}`,
+    );
   }
   const isRetryable = r.isRetryable ?? defaultIsRetryable;
   const out: NormalizedRetry = { attempts, minDelayMs, maxDelayMs, factor, jitter, isRetryable };
@@ -103,8 +112,6 @@ async function sleepAbortable(ms: number, signal: AbortSignal): Promise<void> {
       signal.removeEventListener('abort', onAbort);
       resolve();
     }, ms);
-    // biome-ignore lint/complexity/useLiteralKeys: node timers
-    (t as unknown as { unref?: () => void }).unref?.();
     const onAbort = () => {
       clearTimeout(t);
       reject(signal.reason ?? new Error('aborted'));

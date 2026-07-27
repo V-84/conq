@@ -45,8 +45,9 @@ export class MinHeap<T extends HeapItem> {
     return ai.seq < aj.seq;
   }
 
-  #siftUp(i: number): void {
+  #siftUp(start: number): void {
     const a = this.#a;
+    let i = start;
     while (i > 0) {
       const parent = (i - 1) >> 1;
       if (this.#less(i, parent)) {
@@ -58,9 +59,10 @@ export class MinHeap<T extends HeapItem> {
     }
   }
 
-  #siftDown(i: number): void {
+  #siftDown(start: number): void {
     const a = this.#a;
     const n = a.length;
+    let i = start;
     for (;;) {
       const l = 2 * i + 1;
       const r = 2 * i + 2;

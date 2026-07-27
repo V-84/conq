@@ -6,8 +6,8 @@
 // Pass --full to run the spec's exact config (N=200, windowMs=1000, 3 seeds) —
 // takes several minutes because the token bucket caps throughput at 5/sec.
 
-import { createServer } from './server.mjs';
 import { armA, armBSettled, armC } from './arms.mjs';
+import { createServer } from './server.mjs';
 
 const FULL = process.argv.includes('--full');
 const CFG = FULL
@@ -23,7 +23,12 @@ async function runArm(name, fn, latency) {
       windowCap: CFG.windowCap,
       latency,
     });
-    const res = await fn(server.handle, { N: CFG.N, windowMs: CFG.windowMs, windowCap: CFG.windowCap, backoffMs: CFG.backoffMs });
+    const res = await fn(server.handle, {
+      N: CFG.N,
+      windowMs: CFG.windowMs,
+      windowCap: CFG.windowCap,
+      backoffMs: CFG.backoffMs,
+    });
     per.push({
       seed,
       lost: res.lost,
@@ -44,7 +49,9 @@ function fmt(row) {
   return `${row.name.padEnd(28)}  lost=${String(row.median.lost).padStart(3)}/${CFG.N}  429s=${String(row.median.err429).padStart(4)}  peak=${String(row.median.peak).padStart(3)}`;
 }
 
-console.log(`Config: N=${CFG.N}, windowMs=${CFG.windowMs}, cap=${CFG.windowCap}, seeds=${CFG.seeds.join(',')}${FULL ? '' : ' (scaled; pass --full for spec config)'}`);
+console.log(
+  `Config: N=${CFG.N}, windowMs=${CFG.windowMs}, cap=${CFG.windowCap}, seeds=${CFG.seeds.join(',')}${FULL ? '' : ' (scaled; pass --full for spec config)'}`,
+);
 
 console.log('\n== Zero-latency channel ==');
 const zeroLat = () => 0;

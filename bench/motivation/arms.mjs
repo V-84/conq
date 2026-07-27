@@ -96,22 +96,24 @@ export async function armC(handle, { N, windowMs, windowCap, backoffMs }) {
 
   const submit = (i) => {
     scheduled++;
-    queue.add(async () => {
-      attemptCount[i]++;
-      try {
-        const r = await handle();
-        results[i] = { status: 'fulfilled', value: r };
-      } catch (err) {
-        if (err.status === 429 || attemptCount[i] > RETRIES + 1) {
-          results[i] = { status: 'rejected', reason: err };
-          return;
+    queue
+      .add(async () => {
+        attemptCount[i]++;
+        try {
+          const r = await handle();
+          results[i] = { status: 'fulfilled', value: r };
+        } catch (err) {
+          if (err.status === 429 || attemptCount[i] > RETRIES + 1) {
+            results[i] = { status: 'rejected', reason: err };
+            return;
+          }
+          const delay = backoffMs * 2 ** (attemptCount[i] - 1);
+          setTimeout(() => submit(i), delay);
         }
-        const delay = backoffMs * 2 ** (attemptCount[i] - 1);
-        setTimeout(() => submit(i), delay);
-      }
-    }).finally(() => {
-      scheduled--;
-    });
+      })
+      .finally(() => {
+        scheduled--;
+      });
   };
 
   scheduled = 0;

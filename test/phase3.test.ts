@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterAll } from 'vitest';
-import { Queue, AbortError, TimeoutError } from '../src/index.js';
+import { afterAll, describe, expect, it, vi } from 'vitest';
+import { AbortError, Queue, TimeoutError } from '../src/index.js';
 
 const unhandled: unknown[] = [];
 const onUnhandled = (r: unknown) => unhandled.push(r);
@@ -21,10 +21,12 @@ describe('SC-13 dynamic concurrency', () => {
       return i;
     });
     for (const t of tasks) q.add(t);
-    await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(started).toEqual([0]);
     q.concurrency = 3;
-    await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(started.slice().sort()).toEqual([0, 1, 2]);
     // Release everything until idle; gates is grown by newly-started tasks.
     while (q.running > 0 || q.size > 0) {
@@ -46,7 +48,8 @@ describe('SC-13 dynamic concurrency', () => {
         finished.push(i);
       });
     }
-    await Promise.resolve(); await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(started.sort()).toEqual([0, 1, 2]);
     q.concurrency = 1;
     // In-flight not killed.
@@ -55,7 +58,8 @@ describe('SC-13 dynamic concurrency', () => {
     gates[0]!();
     await new Promise((r) => setTimeout(r, 10));
     expect(started.length).toBe(3); // still no new start
-    gates[1]!(); gates[2]!();
+    gates[1]!();
+    gates[2]!();
     await new Promise((r) => setTimeout(r, 10));
     expect(started.length).toBe(4);
     gates[3]!();
@@ -87,7 +91,12 @@ describe('SC-14 queue lifecycle', () => {
     const q = new Queue({ concurrency: 2 });
     q.pause();
     const results: number[] = [];
-    const promises = [1, 2, 3].map((i) => q.add(async () => { results.push(i); return i; }));
+    const promises = [1, 2, 3].map((i) =>
+      q.add(async () => {
+        results.push(i);
+        return i;
+      }),
+    );
     await new Promise((r) => setTimeout(r, 20));
     expect(results).toEqual([]);
     expect(q.size).toBe(3);
@@ -112,7 +121,9 @@ describe('SC-14 queue lifecycle', () => {
 
   it('add() rejection safety: ignored rejection does not crash', async () => {
     const q = new Queue({ concurrency: 1 });
-    q.add(async () => { throw new Error('ignored'); }); // NOT awaited, no catch
+    q.add(async () => {
+      throw new Error('ignored');
+    }); // NOT awaited, no catch
     await q.onIdle();
     // Give unhandled-rejection detection a tick to fire.
     await new Promise((r) => setImmediate(r));
@@ -124,9 +135,11 @@ describe('SC-14 queue lifecycle', () => {
   it('asyncDispose drains on exit', async () => {
     const seen: number[] = [];
     {
-      // biome-ignore lint/correctness/noUnusedVariables: intentional using
       await using q = new Queue({ concurrency: 1 });
-      for (let i = 0; i < 3; i++) q.add(async () => { seen.push(i); });
+      for (let i = 0; i < 3; i++)
+        q.add(async () => {
+          seen.push(i);
+        });
     }
     expect(seen).toEqual([0, 1, 2]);
   });
@@ -138,10 +151,30 @@ describe('SC-15 priority scheduling', () => {
     const q = new Queue({ concurrency: 1 });
     q.pause();
     const order: string[] = [];
-    q.add(async () => { order.push('a'); }, { priority: 0 });
-    q.add(async () => { order.push('b'); }, { priority: 5 });
-    q.add(async () => { order.push('c'); }, { priority: 0 });
-    q.add(async () => { order.push('d'); }, { priority: 10 });
+    q.add(
+      async () => {
+        order.push('a');
+      },
+      { priority: 0 },
+    );
+    q.add(
+      async () => {
+        order.push('b');
+      },
+      { priority: 5 },
+    );
+    q.add(
+      async () => {
+        order.push('c');
+      },
+      { priority: 0 },
+    );
+    q.add(
+      async () => {
+        order.push('d');
+      },
+      { priority: 10 },
+    );
     q.resume();
     await q.onIdle();
     expect(order).toEqual(['d', 'b', 'a', 'c']);
@@ -161,9 +194,15 @@ describe('Queue: resilience passthrough', () => {
     const starts: number[] = [];
     const t0 = Date.now();
     await Promise.all([
-      q.add(async () => { starts.push(Date.now() - t0); }),
-      q.add(async () => { starts.push(Date.now() - t0); }),
-      q.add(async () => { starts.push(Date.now() - t0); }),
+      q.add(async () => {
+        starts.push(Date.now() - t0);
+      }),
+      q.add(async () => {
+        starts.push(Date.now() - t0);
+      }),
+      q.add(async () => {
+        starts.push(Date.now() - t0);
+      }),
     ]);
     starts.sort((a, b) => a - b);
     expect(starts[1]! - starts[0]!).toBeGreaterThanOrEqual(90);
