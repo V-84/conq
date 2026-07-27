@@ -1,0 +1,53 @@
+{
+  "name": "conq",
+  "version": "0.1.0",
+  "description": "Bounded async concurrency with retry integrated into admission control. Zero deps. ESM + CJS.",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/v-84/conq.git"
+  },
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node scripts/write-cjs-pkg.mjs",
+    "build": "npm run build:esm && npm run build:cjs",
+    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@sinonjs/fake-timers": "^13.0.5",
+    "@types/node": "^22.10.5",
+    "@types/sinonjs__fake-timers": "^8.1.5",
+    "p-queue": "^9.3.3",
+    "p-retry": "^8.0.0",
+    "publint": "^0.3.0",
+    "typescript": "^7.0.0",
+    "vitest": "^2.1.8"
+  }
+}
