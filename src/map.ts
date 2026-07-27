@@ -33,6 +33,9 @@ export async function mapConcurrent<T, R>(
     stopOnError,
     onProgress: options.onProgress,
     total,
+    retry: normalized.retry,
+    timeoutMs: normalized.timeoutMs,
+    rateLimiter: normalized.rateLimiter,
   });
 
   const out: R[] = new Array(results.length);
@@ -79,6 +82,9 @@ export async function mapSettled<T, R>(
     stopOnError: false,
     onProgress: options.onProgress,
     total,
+    retry: normalized.retry,
+    timeoutMs: normalized.timeoutMs,
+    rateLimiter: normalized.rateLimiter,
   });
 
   return results.map<SettledResult<R>>((r) =>
@@ -124,6 +130,9 @@ export async function forEachConcurrent<T>(
     stopOnError,
     onProgress: options.onProgress,
     total,
+    retry: normalized.retry,
+    timeoutMs: normalized.timeoutMs,
+    rateLimiter: normalized.rateLimiter,
   });
 
   if (!stopOnError && errors.length > 0) {
