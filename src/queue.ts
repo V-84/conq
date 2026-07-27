@@ -1,9 +1,9 @@
 import { AbortError } from './errors.js';
-import { deferred, type Deferred } from './internal/deferred.js';
-import { MinHeap, type HeapItem } from './internal/heap.js';
+import { type Deferred, deferred } from './internal/deferred.js';
+import { type HeapItem, MinHeap } from './internal/heap.js';
 import { anySignal } from './internal/signal.js';
-import { runAttempts, normalizeCommonOptions, type NormalizedCommon } from './pool.js';
-import { normalizeRetry, type NormalizedRetry } from './retry.js';
+import { type NormalizedCommon, normalizeCommonOptions, runAttempts } from './pool.js';
+import { type NormalizedRetry, normalizeRetry } from './retry.js';
 import type { RetryOptions, RunOptions, Task, TaskContext } from './types.js';
 import {
   assertTaskFunction,

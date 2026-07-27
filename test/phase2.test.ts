@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, afterAll, beforeEach, afterEach } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  AbortError,
+  type RetryOptions,
+  TimeoutError,
   mapConcurrent,
   mapSettled,
-  AbortError,
-  TimeoutError,
   withRetry,
-  type RetryOptions,
 } from '../src/index.js';
-import { setRandom, resetRandom } from '../src/internal/random.js';
+import { resetRandom, setRandom } from '../src/internal/random.js';
 
 // Reuse the suite-wide unhandled-rejection assertion.
 const unhandled: unknown[] = [];
@@ -100,21 +100,46 @@ describe('SC-8 retry + backoff', () => {
     // We test computeBackoffMs indirectly by observing delayMs in onRetry.
     // Full jitter with random=0 -> delay=0. Equal jitter -> base/2.
     return (async () => {
-      let full = -1, equal = -1;
+      let full = -1;
+      let equal = -1;
       let n = 0;
       await mapConcurrent(
         [1],
-        async () => { n++; if (n === 1) throw new Error('x'); return 1; },
+        async () => {
+          n++;
+          if (n === 1) throw new Error('x');
+          return 1;
+        },
         {
-          retry: { attempts: 2, minDelayMs: 100, factor: 2, jitter: 'full', onRetry: (i) => (full = i.delayMs) },
+          retry: {
+            attempts: 2,
+            minDelayMs: 100,
+            factor: 2,
+            jitter: 'full',
+            onRetry: (i) => {
+              full = i.delayMs;
+            },
+          },
         },
       );
       n = 0;
       await mapConcurrent(
         [1],
-        async () => { n++; if (n === 1) throw new Error('x'); return 1; },
+        async () => {
+          n++;
+          if (n === 1) throw new Error('x');
+          return 1;
+        },
         {
-          retry: { attempts: 2, minDelayMs: 100, factor: 2, jitter: 'equal', onRetry: (i) => (equal = i.delayMs) },
+          retry: {
+            attempts: 2,
+            minDelayMs: 100,
+            factor: 2,
+            jitter: 'equal',
+            onRetry: (i) => {
+              equal = i.delayMs;
+            },
+          },
         },
       );
       expect(full).toBe(0);
@@ -124,8 +149,14 @@ describe('SC-8 retry + backoff', () => {
 
   it('withRetry composable helper works stand-alone', async () => {
     let n = 0;
-    const t = withRetry(async () => { n++; if (n < 2) throw new Error('boom'); return 'ok'; },
-      { attempts: 3, minDelayMs: 5, jitter: 'none' });
+    const t = withRetry(
+      async () => {
+        n++;
+        if (n < 2) throw new Error('boom');
+        return 'ok';
+      },
+      { attempts: 3, minDelayMs: 5, jitter: 'none' },
+    );
     const ac = new AbortController();
     const out = await t({ signal: ac.signal, attempt: 0 });
     expect(out).toBe('ok');
@@ -172,7 +203,9 @@ describe('SC-9 abort', () => {
     const w = vi.fn(async (n: number) => n);
     const ac = new AbortController();
     ac.abort('early');
-    await expect(mapConcurrent([1, 2], w, { signal: ac.signal })).rejects.toBeInstanceOf(AbortError);
+    await expect(mapConcurrent([1, 2], w, { signal: ac.signal })).rejects.toBeInstanceOf(
+      AbortError,
+    );
     expect(w).not.toHaveBeenCalled();
   });
 
@@ -186,11 +219,15 @@ describe('SC-9 abort', () => {
         started.push(i);
         await new Promise<void>((resolve, reject) => {
           const t = setTimeout(resolve, 100);
-          ctx.signal.addEventListener('abort', () => {
-            clearTimeout(t);
-            seenAbort.push(i);
-            reject(new AbortError('inner'));
-          }, { once: true });
+          ctx.signal.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(t);
+              seenAbort.push(i);
+              reject(new AbortError('inner'));
+            },
+            { once: true },
+          );
         });
       },
       { concurrency: 3, signal: ac.signal },
@@ -208,7 +245,10 @@ describe('SC-9 abort', () => {
     const ac = new AbortController();
     const p = mapConcurrent(
       [1],
-      async () => { attempts.push(1); throw new Error('bad'); },
+      async () => {
+        attempts.push(1);
+        throw new Error('bad');
+      },
       {
         signal: ac.signal,
         retry: { attempts: 5, minDelayMs: 1000, jitter: 'none' },
@@ -229,7 +269,10 @@ describe('SC-9 abort', () => {
     await expect(
       mapConcurrent(
         [1],
-        async () => { n++; throw new AbortError('inner'); },
+        async () => {
+          n++;
+          throw new AbortError('inner');
+        },
         { signal: ac.signal, retry: { attempts: 5, minDelayMs: 1, jitter: 'none' } },
       ),
     ).rejects.toBeInstanceOf(AbortError);
@@ -257,10 +300,14 @@ describe('SC-12 timeout', () => {
       [1],
       async (_i, _idx, ctx) => {
         await new Promise<void>((resolve) => {
-          ctx.signal.addEventListener('abort', () => {
-            aborted = true;
-            resolve();
-          }, { once: true });
+          ctx.signal.addEventListener(
+            'abort',
+            () => {
+              aborted = true;
+              resolve();
+            },
+            { once: true },
+          );
         });
       },
       { timeoutMs: 30 },
@@ -296,6 +343,8 @@ describe('retry option validation', () => {
     ['minDelayMs', -1],
     ['factor', 0.5],
   ])('retry.%s = %p → TypeError', async (k, v) => {
-    await expect(mapConcurrent([1], async (n) => n, { retry: { [k]: v } as RetryOptions })).rejects.toBeInstanceOf(TypeError);
+    await expect(
+      mapConcurrent([1], async (n) => n, { retry: { [k]: v } as RetryOptions }),
+    ).rejects.toBeInstanceOf(TypeError);
   });
 });

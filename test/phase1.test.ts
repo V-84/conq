@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, afterAll } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import {
-  mapConcurrent,
-  mapSettled,
-  forEachConcurrent,
   AbortError,
   type MapOptions,
   type ProgressInfo,
+  forEachConcurrent,
+  mapConcurrent,
+  mapSettled,
 } from '../src/index.js';
 
 // -------- global unhandled-rejection counter (SC-6) --------
@@ -14,20 +14,27 @@ const onUnhandled = (reason: unknown) => unhandled.push(reason);
 process.on('unhandledRejection', onUnhandled);
 afterAll(() => {
   process.off('unhandledRejection', onUnhandled);
-  expect(unhandled, `unhandled rejections during suite: ${unhandled.map(String).join(', ')}`).toEqual([]);
+  expect(
+    unhandled,
+    `unhandled rejections during suite: ${unhandled.map(String).join(', ')}`,
+  ).toEqual([]);
 });
 
 // -------- SC-1: laziness --------
 describe('SC-1 laziness', () => {
   it('concurrency:1 runs strictly serially', async () => {
     const log: string[] = [];
-    await mapConcurrent([1, 2, 3], async (n) => {
-      log.push(`start${n}`);
-      await Promise.resolve();
-      await Promise.resolve();
-      log.push(`finish${n}`);
-      return n;
-    }, { concurrency: 1 });
+    await mapConcurrent(
+      [1, 2, 3],
+      async (n) => {
+        log.push(`start${n}`);
+        await Promise.resolve();
+        await Promise.resolve();
+        log.push(`finish${n}`);
+        return n;
+      },
+      { concurrency: 1 },
+    );
     expect(log).toEqual(['start1', 'finish1', 'start2', 'finish2', 'start3', 'finish3']);
   });
 });
@@ -36,18 +43,25 @@ describe('SC-1 laziness', () => {
 describe('SC-2 concurrency ceiling', () => {
   it('never exceeds configured concurrency across 200 randomised runs', async () => {
     let rng = 1;
-    const rand = () => ((rng = (rng * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    const rand = () => {
+      rng = (rng * 1103515245 + 12345) & 0x7fffffff;
+      return rng / 0x7fffffff;
+    };
     for (let run = 0; run < 200; run++) {
       const items = Array.from({ length: Math.floor(rand() * 51) }, (_, i) => i);
       const concurrency = 1 + Math.floor(rand() * 10);
       let inFlight = 0;
       let peak = 0;
-      await mapConcurrent(items, async () => {
-        inFlight++;
-        peak = Math.max(peak, inFlight);
-        await new Promise((r) => setTimeout(r, Math.floor(rand() * 3)));
-        inFlight--;
-      }, { concurrency });
+      await mapConcurrent(
+        items,
+        async () => {
+          inFlight++;
+          peak = Math.max(peak, inFlight);
+          await new Promise((r) => setTimeout(r, Math.floor(rand() * 3)));
+          inFlight--;
+        },
+        { concurrency },
+      );
       expect(peak).toBeLessThanOrEqual(concurrency);
     }
   }, 20_000);
@@ -59,10 +73,14 @@ describe('SC-3 order preservation', () => {
     for (let run = 0; run < 20; run++) {
       const n = 20;
       const items = Array.from({ length: n }, (_, i) => i);
-      const out = await mapConcurrent(items, async (i) => {
-        await new Promise((r) => setTimeout(r, (n - i) * 2));
-        return i * i;
-      }, { concurrency: 8 });
+      const out = await mapConcurrent(
+        items,
+        async (i) => {
+          await new Promise((r) => setTimeout(r, (n - i) * 2));
+          return i * i;
+        },
+        { concurrency: 8 },
+      );
       expect(out).toEqual(items.map((i) => i * i));
     }
   });
@@ -75,11 +93,15 @@ describe('SC-4 immediate refill', () => {
     const started: number[] = [];
     const finished: number[] = [];
     const t0 = Date.now();
-    await mapConcurrent(durations, async (d, i) => {
-      started.push(i);
-      await new Promise((r) => setTimeout(r, d));
-      finished.push(i);
-    }, { concurrency: 2 });
+    await mapConcurrent(
+      durations,
+      async (d, i) => {
+        started.push(i);
+        await new Promise((r) => setTimeout(r, d));
+        finished.push(i);
+      },
+      { concurrency: 2 },
+    );
     // Item 3 must start before item 0 finishes.
     const item0FinishIdx = finished.indexOf(0);
     const item3StartIdx = started.indexOf(3);
@@ -127,10 +149,14 @@ describe('SC-7 stopOnError', () => {
           try {
             await new Promise((resolve, reject) => {
               const t = setTimeout(resolve, 30);
-              ctx.signal.addEventListener('abort', () => {
-                clearTimeout(t);
-                reject(new AbortError('inner'));
-              }, { once: true });
+              ctx.signal.addEventListener(
+                'abort',
+                () => {
+                  clearTimeout(t);
+                  reject(new AbortError('inner'));
+                },
+                { once: true },
+              );
             });
           } catch {
             /* observe abort */
@@ -151,7 +177,10 @@ describe('SC-7 stopOnError', () => {
     const err = await mapConcurrent(
       [0, 1, 2, 3],
       async (i) => {
-        if (i === 3) { await new Promise((r) => setTimeout(r, 5)); throw new Error('e3'); }
+        if (i === 3) {
+          await new Promise((r) => setTimeout(r, 5));
+          throw new Error('e3');
+        }
         if (i === 1) throw new Error('e1');
         return i;
       },
@@ -168,7 +197,10 @@ describe('SC-7 stopOnError', () => {
       Array.from({ length: 20 }, (_, i) => i),
       async (i) => {
         started.push(i);
-        if (i === 0) { await new Promise((r) => setTimeout(r, 2)); throw new Error('x'); }
+        if (i === 0) {
+          await new Promise((r) => setTimeout(r, 2));
+          throw new Error('x');
+        }
         await new Promise((r) => setTimeout(r, 10));
       },
       { concurrency: 2 },
@@ -180,32 +212,42 @@ describe('SC-7 stopOnError', () => {
 
 // -------- SC-10: validation --------
 describe('SC-10 validation', () => {
-  it.each([NaN, 0, -1, 1.5, '4' as unknown, null as unknown, undefined])(
+  it.each([Number.NaN, 0, -1, 1.5, '4' as unknown, null as unknown, undefined])(
     'rejects concurrency=%p (except undefined which uses default)',
     async (value) => {
       const opts = value === undefined ? {} : { concurrency: value as number };
       if (value === undefined) {
         await expect(mapConcurrent([1], async (n) => n, opts as MapOptions)).resolves.toEqual([1]);
       } else {
-        await expect(mapConcurrent([1], async (n) => n, opts as MapOptions)).rejects.toBeInstanceOf(TypeError);
+        await expect(mapConcurrent([1], async (n) => n, opts as MapOptions)).rejects.toBeInstanceOf(
+          TypeError,
+        );
       }
     },
   );
 
   it('accepts Infinity and positive ints', async () => {
-    await expect(mapConcurrent([1, 2], async (n) => n, { concurrency: Number.POSITIVE_INFINITY })).resolves.toEqual([1, 2]);
-    await expect(mapConcurrent([1, 2], async (n) => n, { concurrency: 3 })).resolves.toEqual([1, 2]);
+    await expect(
+      mapConcurrent([1, 2], async (n) => n, { concurrency: Number.POSITIVE_INFINITY }),
+    ).resolves.toEqual([1, 2]);
+    await expect(mapConcurrent([1, 2], async (n) => n, { concurrency: 3 })).resolves.toEqual([
+      1, 2,
+    ]);
   });
 
   it('error message echoes the value', async () => {
-    try { await mapConcurrent([1], async (n) => n, { concurrency: NaN }); }
-    catch (e) { expect((e as Error).message).toContain('NaN'); return; }
+    try {
+      await mapConcurrent([1], async (n) => n, { concurrency: Number.NaN });
+    } catch (e) {
+      expect((e as Error).message).toContain('NaN');
+      return;
+    }
     throw new Error('no throw');
   });
 
   it('NaN does NOT hang', async () => {
     const race = Promise.race([
-      mapConcurrent([1, 2, 3], async (n) => n, { concurrency: NaN }).catch((e) => e),
+      mapConcurrent([1, 2, 3], async (n) => n, { concurrency: Number.NaN }).catch((e) => e),
       new Promise((_r, rej) => setTimeout(() => rej(new Error('HUNG')), 500)),
     ]);
     const result = await race;
@@ -213,13 +255,21 @@ describe('SC-10 validation', () => {
   });
 
   it('validates intervalMs/intervalCap together', async () => {
-    await expect(mapConcurrent([1], async (n) => n, { intervalMs: 100 })).rejects.toBeInstanceOf(TypeError);
-    await expect(mapConcurrent([1], async (n) => n, { intervalCap: 1 })).rejects.toBeInstanceOf(TypeError);
+    await expect(mapConcurrent([1], async (n) => n, { intervalMs: 100 })).rejects.toBeInstanceOf(
+      TypeError,
+    );
+    await expect(mapConcurrent([1], async (n) => n, { intervalCap: 1 })).rejects.toBeInstanceOf(
+      TypeError,
+    );
   });
 
   it('validates timeoutMs', async () => {
-    await expect(mapConcurrent([1], async (n) => n, { timeoutMs: -1 })).rejects.toBeInstanceOf(TypeError);
-    await expect(mapConcurrent([1], async (n) => n, { timeoutMs: 'x' as unknown as number })).rejects.toBeInstanceOf(TypeError);
+    await expect(mapConcurrent([1], async (n) => n, { timeoutMs: -1 })).rejects.toBeInstanceOf(
+      TypeError,
+    );
+    await expect(
+      mapConcurrent([1], async (n) => n, { timeoutMs: 'x' as unknown as number }),
+    ).rejects.toBeInstanceOf(TypeError);
   });
 });
 
@@ -242,9 +292,9 @@ describe('SC-11 empty input', () => {
 // -------- SC-32: raw-promise guard --------
 describe('SC-32 raw-promise guard', () => {
   it('worker is not a function → TypeError', async () => {
-    await expect(
-      mapConcurrent([1], 42 as unknown as (n: number) => number),
-    ).rejects.toBeInstanceOf(TypeError);
+    await expect(mapConcurrent([1], 42 as unknown as (n: number) => number)).rejects.toBeInstanceOf(
+      TypeError,
+    );
   });
 
   it('worker is a Promise (thenable) → helpful diagnostic', async () => {
@@ -265,10 +315,14 @@ describe('forEachConcurrent basic', () => {
   it('discards results, honours stopOnError:false', async () => {
     const seen: number[] = [];
     await expect(
-      forEachConcurrent([1, 2, 3, 4], async (n) => {
-        seen.push(n);
-        if (n === 2) throw new Error('bad');
-      }, { concurrency: 2, stopOnError: false }),
+      forEachConcurrent(
+        [1, 2, 3, 4],
+        async (n) => {
+          seen.push(n);
+          if (n === 2) throw new Error('bad');
+        },
+        { concurrency: 2, stopOnError: false },
+      ),
     ).rejects.toBeInstanceOf(AggregateError);
     expect(seen.sort()).toEqual([1, 2, 3, 4]);
   });

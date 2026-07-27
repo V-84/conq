@@ -48,12 +48,13 @@ export function validateFactor(name: string, value: unknown): number {
  */
 export function assertTaskFunction(value: unknown, index: number, label = 'task'): void {
   if (typeof value === 'function') return;
-  if (value !== null && typeof value === 'object' && typeof (value as { then?: unknown }).then === 'function') {
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as { then?: unknown }).then === 'function'
+  ) {
     throw new TypeError(
-      `conq: expected a ${label} function, received a Promise at index ${index}.\n` +
-        `A Promise starts running the moment it is created, so passing one here means the\n` +
-        `work has already begun and concurrency cannot be limited. Wrap it in a function:\n` +
-        `  conq.mapConcurrent(items, (item) => doWork(item))`,
+      `conq: expected a ${label} function, received a Promise at index ${index}.\nA Promise starts running the moment it is created, so passing one here means the\nwork has already begun and concurrency cannot be limited. Wrap it in a function:\n  conq.mapConcurrent(items, (item) => doWork(item))`,
     );
   }
   throw new TypeError(

@@ -1,5 +1,5 @@
 // SC-20: static type assertions. Runs under `tsc --noEmit`, not vitest.
-import { mapConcurrent, mapSettled, type SettledResult } from '../src/index.js';
+import { type SettledResult, mapConcurrent, mapSettled } from '../src/index.js';
 
 async function _inference() {
   const r: string[] = await mapConcurrent<number, string>([1, 2], async (n) => n.toString());

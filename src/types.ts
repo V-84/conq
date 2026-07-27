@@ -13,6 +13,15 @@ export type Task<T> = (context: TaskContext) => T | PromiseLike<T>;
  * Context passed to a task invocation. `signal` fires on run-abort, per-attempt
  * timeout, or `Queue.clear()`. `attempt` is 0 for the first try, 1 for the
  * first retry, and so on.
+ *
+ * @example
+ * ```ts
+ * import { mapConcurrent } from 'conq';
+ * await mapConcurrent([1], async (item, index, ctx) => {
+ *   if (ctx.signal.aborted) throw ctx.signal.reason;
+ *   return ctx.attempt;
+ * });
+ * ```
  */
 export interface TaskContext {
   readonly signal: AbortSignal;
@@ -50,6 +59,14 @@ export interface RetryOptions {
 /**
  * Progress snapshot passed to `onProgress` after each task settles (and once
  * initially with zero counters when input is not empty).
+ *
+ * @example
+ * ```ts
+ * import { mapConcurrent } from 'conq';
+ * await mapConcurrent([1, 2], async (n) => n, {
+ *   onProgress: (info) => console.log(`${info.completed}/${info.total ?? '?'}`),
+ * });
+ * ```
  */
 export interface ProgressInfo {
   completed: number;
@@ -83,12 +100,27 @@ export interface RunOptions {
  * `stopOnError: true` (default) rejects on the first failure after awaiting
  * in-flight settlement. `false` runs everything and rejects with an
  * `AggregateError` whose `errors` are in input-index order.
+ *
+ * @example
+ * ```ts
+ * import { mapConcurrent } from 'conq';
+ * await mapConcurrent([1, 2], async (n) => n, { stopOnError: false });
+ * ```
  */
 export interface MapOptions extends RunOptions {
   stopOnError?: boolean;
 }
 
-/** Result shape returned by `mapSettled`, carrying input-index. */
+/**
+ * Result shape returned by `mapSettled`, carrying input-index.
+ *
+ * @example
+ * ```ts
+ * import { mapSettled } from 'conq';
+ * const rs = await mapSettled([1], async (n) => n);
+ * if (rs[0]!.status === 'fulfilled') console.log(rs[0]!.value);
+ * ```
+ */
 export type SettledResult<R> =
   | { status: 'fulfilled'; value: R; index: number }
   | { status: 'rejected'; reason: unknown; index: number };

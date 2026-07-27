@@ -1,4 +1,4 @@
-import { runPool, normalizeCommonOptions } from './pool.js';
+import { normalizeCommonOptions, runPool } from './pool.js';
 import type { MapOptions, RunOptions, SettledResult, TaskContext } from './types.js';
 import { assertTaskFunction } from './validate.js';
 

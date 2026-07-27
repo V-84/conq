@@ -5,13 +5,10 @@
  * acquisition (§4.8 admission-control rule).
  */
 import { AbortError, TimeoutError, isAbortError } from './errors.js';
+import { type RateLimiter, createRateLimiter } from './rate-limit.js';
+import { NO_RETRY, type NormalizedRetry, computeBackoffMs, normalizeRetry } from './retry.js';
 import type { ProgressInfo, RunOptions } from './types.js';
-import {
-  validatePositiveIntOrInfinity,
-  validateNonNegativeFinite,
-} from './validate.js';
-import { normalizeRetry, computeBackoffMs, type NormalizedRetry, NO_RETRY } from './retry.js';
-import { createRateLimiter, type RateLimiter } from './rate-limit.js';
+import { validateNonNegativeFinite, validatePositiveIntOrInfinity } from './validate.js';
 
 export interface PoolRunnerContext {
   signal: AbortSignal;
@@ -51,7 +48,8 @@ export function normalizeCommonOptions(o: RunOptions): NormalizedCommon {
   const concurrency =
     o.concurrency === undefined ? 4 : validatePositiveIntOrInfinity('concurrency', o.concurrency);
   const out: NormalizedCommon = { concurrency, retry: normalizeRetry(o.retry) };
-  if (o.timeoutMs !== undefined) out.timeoutMs = validateNonNegativeFinite('timeoutMs', o.timeoutMs);
+  if (o.timeoutMs !== undefined)
+    out.timeoutMs = validateNonNegativeFinite('timeoutMs', o.timeoutMs);
   const hasInt = o.intervalMs !== undefined;
   const hasCap = o.intervalCap !== undefined;
   if (hasInt !== hasCap) {
@@ -62,7 +60,10 @@ export function normalizeCommonOptions(o: RunOptions): NormalizedCommon {
   if (hasInt && hasCap) {
     const ms = validateNonNegativeFinite('intervalMs', o.intervalMs);
     const cap = validatePositiveIntOrInfinity('intervalCap', o.intervalCap);
-    out.rateLimiter = createRateLimiter(ms, cap === Number.POSITIVE_INFINITY ? Number.MAX_SAFE_INTEGER : cap);
+    out.rateLimiter = createRateLimiter(
+      ms,
+      cap === Number.POSITIVE_INFINITY ? Number.MAX_SAFE_INTEGER : cap,
+    );
   }
   return out;
 }
@@ -114,7 +115,9 @@ export async function runAttempts<T, R>(
         : undefined;
 
     try {
-      const workerPromise = Promise.resolve(worker(item, index, { signal: attemptAc.signal, attempt }));
+      const workerPromise = Promise.resolve(
+        worker(item, index, { signal: attemptAc.signal, attempt }),
+      );
       // Attach a no-op catch on workerPromise so if it rejects later (after
       // timeout has already resolved the race) it does not surface as unhandled.
       workerPromise.catch(() => {});
@@ -158,7 +161,8 @@ async function sleepAbortable(ms: number, signal: AbortSignal): Promise<void> {
       signal.removeEventListener('abort', onAbort);
       resolve();
     }, ms);
-    (t as unknown as { unref?: () => void }).unref?.();
+    // Note: DO NOT unref this timer — the retry backoff must keep the process
+    // alive so the awaiting caller sees the eventual result.
     signal.addEventListener('abort', onAbort, { once: true });
   });
 }
@@ -227,7 +231,15 @@ export async function runPool<T, R>(opts: PoolOptions<T, R>): Promise<PoolResult
       running++;
       let outcome: PoolResult<R>;
       try {
-        const value = await runAttempts(step.value, index, worker, internalController.signal, retry, timeoutMs, rateLimiter);
+        const value = await runAttempts(
+          step.value,
+          index,
+          worker,
+          internalController.signal,
+          retry,
+          timeoutMs,
+          rateLimiter,
+        );
         outcome = { status: 'fulfilled', value, index };
       } catch (reason) {
         outcome = { status: 'rejected', reason, index };
@@ -248,8 +260,7 @@ export async function runPool<T, R>(opts: PoolOptions<T, R>): Promise<PoolResult
     }
   };
 
-  const limit =
-    concurrency === Number.POSITIVE_INFINITY ? Number.POSITIVE_INFINITY : concurrency;
+  const limit = concurrency === Number.POSITIVE_INFINITY ? Number.POSITIVE_INFINITY : concurrency;
   const effective =
     limit === Number.POSITIVE_INFINITY || opts.total === undefined
       ? Number.isFinite(limit)
