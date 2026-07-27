@@ -70,7 +70,7 @@ export function normalizeCommonOptions(o: RunOptions): NormalizedCommon {
  * backoff. `poolSignal` fires on run-abort or stopOnError-abort; a
  * per-attempt controller adds the timeout signal on top.
  */
-async function runAttempts<T, R>(
+export async function runAttempts<T, R>(
   item: T,
   index: number,
   worker: PoolOptions<T, R>['worker'],
