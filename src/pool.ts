@@ -29,6 +29,8 @@ export interface PoolOptions<T, R> {
   retry?: NormalizedRetry | undefined;
   timeoutMs?: number | undefined;
   rateLimiter?: RateLimiter | undefined;
+  /** If true, per-item results are not retained (O(concurrency) memory) — used by forEachConcurrent. */
+  discardResults?: boolean;
 }
 
 export interface PoolResult<R> {
@@ -232,7 +234,7 @@ export async function runPool<T, R>(opts: PoolOptions<T, R>): Promise<PoolResult
       } finally {
         running--;
       }
-      results[index] = outcome;
+      if (!opts.discardResults) results[index] = outcome;
       if (outcome.status === 'fulfilled') {
         succeeded++;
       } else {
