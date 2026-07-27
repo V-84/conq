@@ -133,6 +133,7 @@ export async function forEachConcurrent<T>(
     retry: normalized.retry,
     timeoutMs: normalized.timeoutMs,
     rateLimiter: normalized.rateLimiter,
+    discardResults: true,
   });
 
   if (!stopOnError && errors.length > 0) {
