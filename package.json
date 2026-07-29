@@ -13,6 +13,20 @@
     "url": "git+https://github.com/v-84/conq.git"
   },
   "license": "MIT",
+  "keywords": [
+    "concurrency",
+    "async",
+    "queue",
+    "retry",
+    "rate-limit",
+    "throttle",
+    "parallel",
+    "promise",
+    "pool",
+    "bounded",
+    "admission-control",
+    "backoff"
+  ],
   "exports": {
     ".": {
       "import": {
