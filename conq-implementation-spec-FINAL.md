@@ -1,6 +1,6 @@
-# `conq` — Final Implementation Specification
+# `con-q` — Final Implementation Specification
 
-**Package:** `conq` (npm) · **Repo:** `github.com/v-84/conq` · **Import identifier:** `conq`
+**Package:** `con-q` (npm) · **Repo:** `github.com/v-84/conq` · **Import identifier:** `con-q`
 **Audience:** an autonomous coding agent implementing this from scratch.
 **Status:** self-contained and authoritative. This supersedes all earlier drafts (`taskq-*`). Where this document and any prior note disagree, this document wins.
 **Deliverable:** a small, honest, zero-dependency Node.js + TypeScript library that bounds async concurrency *and* integrates retry correctly with rate limiting.
@@ -11,13 +11,13 @@
 
 This project was validated by experiment before being specified. That experiment (reproduced in `bench/motivation/`, results in §1) established two things that must govern every decision below:
 
-1. **The one thing worth building.** Composing the ecosystem's standard tools — `p-queue` for concurrency, `p-retry` for retries — the obvious way silently breaks the rate limit, because the queue only ever governs each task's *first* attempt. Retries fire from an external timer the queue cannot see. Under load this manufactured a self-inflicted 429 storm and **lost ~29% of all tasks** to exhausted retry budgets. `conq` makes retries re-enter admission control by default, so this cannot happen.
+1. **The one thing worth building.** Composing the ecosystem's standard tools — `p-queue` for concurrency, `p-retry` for retries — the obvious way silently breaks the rate limit, because the queue only ever governs each task's *first* attempt. Retries fire from an external timer the queue cannot see. Under load this manufactured a self-inflicted 429 storm and **lost ~29% of all tasks** to exhausted retry budgets. `con-q` makes retries re-enter admission control by default, so this cannot happen.
 
-2. **Honesty is a hard requirement, not a tone.** The same experiment proved that a competent engineer closes most of that gap in **about twelve lines** on stock `p-queue` (re-enqueue each retry through `queue.add`). So `conq`'s value is *correct-by-default* plus a few genuine gaps — **not** a capability nobody else can offer. Any README copy, comparison table, or marketing that implies "impossible without conq" is a spec violation (SC-28…SC-31). We win trust by conceding the general case and defending a narrow one precisely.
+2. **Honesty is a hard requirement, not a tone.** The same experiment proved that a competent engineer closes most of that gap in **about twelve lines** on stock `p-queue` (re-enqueue each retry through `queue.add`). So `con-q`'s value is *correct-by-default* plus a few genuine gaps — **not** a capability nobody else can offer. Any README copy, comparison table, or marketing that implies "impossible without con-q" is a spec violation (SC-28…SC-31). We win trust by conceding the general case and defending a narrow one precisely.
 
 **If, during implementation, you find yourself expanding scope to "beat" `p-queue` on features it already has, stop.** p-queue is excellent, mature, and already ships per-task timeout, priority, pause/resume/clear, `onIdle`, dynamic concurrency, sliding-window rate limiting (`strict: true`), and task introspection. Those are **table stakes to match**, not features to claim.
 
-### What `conq` genuinely offers over `p-queue` (the entire list — there are four)
+### What `con-q` genuinely offers over `p-queue` (the entire list — there are four)
 
 | # | Advantage | Weight |
 |---|---|---|
@@ -26,7 +26,7 @@ This project was validated by experiment before being specified. That experiment
 | **A3** | **First-error handling that aborts and awaits in-flight work** before rejecting, instead of `Promise.all`-style abandonment. | Real, smaller impact |
 | **A4** | **Runtime guard for the eager-promise mistake** — throws a diagnostic instead of silently running a live promise and disabling concurrency. | Small, high support value for JS users |
 
-Everything else `conq` does (bounded concurrency, order preservation, streaming input, `AggregateError` semantics, priority, rate limiting) **matches** `p-map`/`p-queue` and must be described as parity, never as advantage.
+Everything else `con-q` does (bounded concurrency, order preservation, streaming input, `AggregateError` semantics, priority, rate limiting) **matches** `p-map`/`p-queue` and must be described as parity, never as advantage.
 
 ---
 
@@ -35,10 +35,10 @@ Everything else `conq` does (bounded concurrency, order preservation, streaming 
 `p-queue@9.3.3` + `p-retry@8.0.0`. 200 tasks, rolling limit of 5 per 1000ms, 30% transient-503 injection, seeded, run to completion, 3 repetitions. Three arms:
 
 - **A** — `p-queue` (`strict: true`) with `p-retry` wrapped inside each task (the naive composition).
-- **B** — a `conq`-style queue with retries re-admitted through the same gate.
+- **B** — a `con-q`-style queue with retries re-admitted through the same gate.
 - **C** — stock `p-queue` (`strict: true`), **no** `p-retry`, retries re-enqueued manually via `queue.add` (~12 lines).
 
-| metric (median of 3 seeds) | A: p-queue + p-retry | B: conq | C: p-queue + manual re-add |
+| metric (median of 3 seeds) | A: p-queue + p-retry | B: con-q | C: p-queue + manual re-add |
 |---|---|---|---|
 | tasks lost / 200 | **57 (29%)** | 0 | 0 |
 | 429s received | 230 | 0 | 0 |
@@ -47,7 +47,7 @@ Everything else `conq` does (bounded concurrency, order preservation, streaming 
 **Two findings that must be preserved verbatim in the README, because omitting them is dishonest:**
 
 - **`strict: true` barely helps arm A.** It halves peak burst but leaves task loss essentially unchanged — the failure is retries escaping the queue, not the window algorithm. Pre-empt the "just turn on strict mode" comment with this.
-- **Arms B and C are near-identical.** The fix is *"retries must re-enter admission control,"* not *"use conq."* The zero-429 result for B and C is partly an artifact of a zero-latency test channel; under jittered latency both compliant arms emit ~80 429s and lose ~4/200 (conq stays marginally ahead because it never leaves admission control at all). The **29%-vs-2% task-loss gap is the robust, defensible headline** and *widens* under realistic latency; the "perfect zero" framing must not be used.
+- **Arms B and C are near-identical.** The fix is *"retries must re-enter admission control,"* not *"use con-q."* The zero-429 result for B and C is partly an artifact of a zero-latency test channel; under jittered latency both compliant arms emit ~80 429s and lose ~4/200 (con-q stays marginally ahead because it never leaves admission control at all). The **29%-vs-2% task-loss gap is the robust, defensible headline** and *widens* under realistic latency; the "perfect zero" framing must not be used.
 
 `bench/motivation/` must contain a runnable version of this (arms A/B/C, seeded, plus the jittered-latency probe) so any reader can reproduce the numbers the README cites.
 
@@ -179,7 +179,7 @@ export declare class TimeoutError extends Error { readonly name: 'TimeoutError';
 export declare class AbortError extends Error { readonly name: 'AbortError'; readonly cause?: unknown; }
 ```
 
-> **Naming note.** The class is `Queue`, not `TaskQueue`/`ConqQueue` — users write `import { Queue } from 'conq'`. Do not prefix exports with the package name.
+> **Naming note.** The class is `Queue`, not `TaskQueue`/`ConqQueue` — users write `import { Queue } from 'con-q'`. Do not prefix exports with the package name.
 
 ---
 
@@ -231,10 +231,10 @@ equal -> base/2 + random() * base/2
 
 **4.16 Raw-promise runtime guard (A4).** Every entry point accepting a task/worker guards at runtime. Non-function → `TypeError`. Thenable (`typeof v?.then === 'function'`) → a `TypeError` that diagnoses the specific mistake:
 ```
-TypeError: conq: expected a task function, received a Promise at index 2.
+TypeError: con-q: expected a task function, received a Promise at index 2.
 A Promise starts running the moment it is created, so passing one here means the
 work has already begun and concurrency cannot be limited. Wrap it in a function:
-  conq.mapConcurrent(items, (item) => doWork(item))
+  con-q.mapConcurrent(items, (item) => doWork(item))
 ```
 Validate each element as it is pulled (O(1) per task), never by eagerly walking large inputs.
 
@@ -322,7 +322,7 @@ Do **not** install `@typescript/native-preview` (`tsgo` nightly). The stable `ty
 ```jsonc
 // package.json
 {
-  "name": "conq",
+  "name": "con-q",
   "type": "module",
   "sideEffects": false,
   "engines": { "node": ">=20" },
@@ -359,7 +359,7 @@ README.md
 
 - **Runtime validation carries the safety load** every static guarantee gives TS users (§4.9, §4.16). Messages name the parameter, echo the value, and explain known mistakes.
 - **Editor support for free:** ship `.d.ts`; VS Code gives JS users autocomplete + hover docs with zero config. Never strip declarations.
-- **JSDoc users:** `@type {import('conq').MapOptions}` must resolve (SC-34).
+- **JSDoc users:** `@type {import('con-q').MapOptions}` must resolve (SC-34).
 - **Node floor `>=20`:** the only blockers are `Promise.withResolvers` and `AbortSignal.any`; implement both as tiny internal fallbacks in `src/internal/` that prefer native when present. No polyfill dependency. Test on 20, 22, 24.
 
 ---
@@ -412,7 +412,7 @@ Complete when **every** item has a passing automated test in CI on Node 20, 22, 
 |---|---|
 | **SC-32** | Raw-promise guard: passing `[Promise.resolve(1),…]`/a `Promise`/a non-function worker throws `TypeError` whose message contains the offending index and the word `Promise` (assert message content) |
 | **SC-33** | Plain-JS smoke: a no-build `.js` file installs the packed tarball and exercises `mapConcurrent`, `Queue`, retry, abort; green on Node 20/22/24; ESM + CJS variants |
-| **SC-34** | JSDoc: a `.js` file using `@type {import('conq').MapOptions}` type-checks under `tsc --checkJs --noEmit` against the built package |
+| **SC-34** | JSDoc: a `.js` file using `@type {import('con-q').MapOptions}` type-checks under `tsc --checkJs --noEmit` against the built package |
 
 ### Documentation / honesty gates (non-negotiable)
 
@@ -422,7 +422,7 @@ Complete when **every** item has a passing automated test in CI on Node 20, 22, 
 | **SC-28a** | `bench/motivation/` contains the runnable arms A/B/C experiment + jittered-latency probe reproducing §1's numbers. README's cited figures must match its output. |
 | **SC-29** | README states explicitly: (a) JS can't forcibly cancel a running promise — `timeoutMs` frees the slot, work continues unless the worker honours `signal`; (b) retry holds its concurrency slot but re-acquires a rate-limit token; (c) `stopOnError:true` awaits in-flight settlement before rejecting |
 | **SC-30** | Comparison section vs `p-map`, `p-queue`, `p-limit`, `Promise.all` that **concedes the general case in plain language** and claims only A1–A4. Every advantage cell traceable to a competitor's published docs. **No cell overstated** — a reviewer must find none. Features p-queue already has (timeout, priority, pause/resume, `onIdle`, dynamic concurrency, `strict` rate limiting, introspection) shown as **parity**, never advantage. |
-| **SC-31** | README must **not** imply "impossible without conq." It must state that re-enqueueing retries fixes most of the rate-limit gap in ~12 lines on stock p-queue, and position conq as *correct-by-default + CJS + safer error/abort defaults*. Every README code sample is extracted and executed in a test. |
+| **SC-31** | README must **not** imply "impossible without con-q." It must state that re-enqueueing retries fixes most of the rate-limit gap in ~12 lines on stock p-queue, and position con-q as *correct-by-default + CJS + safer error/abort defaults*. Every README code sample is extracted and executed in a test. |
 
 ---
 
