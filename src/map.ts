@@ -1,6 +1,6 @@
 import { normalizeCommonOptions, runPool } from './pool.js';
 import type { MapOptions, RunOptions, SettledResult, TaskContext } from './types.js';
-import { assertTaskFunction } from './validate.js';
+import { assertInputNotThenable, assertTaskFunction } from './validate.js';
 
 /**
  * Map a worker over an iterable input with bounded concurrency, preserving
@@ -21,6 +21,7 @@ export async function mapConcurrent<T, R>(
   options: MapOptions = {},
 ): Promise<R[]> {
   assertTaskFunction(worker, 0, 'worker');
+  assertInputNotThenable(input);
   const stopOnError = options.stopOnError !== false;
   const normalized = normalizeCommonOptions(options);
   const total = sizeOf(input);
@@ -71,6 +72,7 @@ export async function mapSettled<T, R>(
   options: RunOptions = {},
 ): Promise<SettledResult<R>[]> {
   assertTaskFunction(worker, 0, 'worker');
+  assertInputNotThenable(input);
   const normalized = normalizeCommonOptions(options);
   const total = sizeOf(input);
 
@@ -110,6 +112,7 @@ export async function forEachConcurrent<T>(
   options: MapOptions = {},
 ): Promise<void> {
   assertTaskFunction(worker, 0, 'worker');
+  assertInputNotThenable(input);
   const stopOnError = options.stopOnError !== false;
   const normalized = normalizeCommonOptions(options);
   const total = sizeOf(input);

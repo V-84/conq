@@ -308,6 +308,52 @@ describe('SC-32 raw-promise guard', () => {
     }
     throw new Error('no throw');
   });
+
+  // Regression: the README's own opening example is an ARRAY of live promises
+  // passed with an identity worker. The worker is a valid function, so the
+  // worker-position guard does not fire — the input guard must catch it.
+  it('input is an array of Promises → TypeError naming the index', async () => {
+    const promises = [1, 2, 3].map((i) => Promise.resolve(i));
+    try {
+      await mapConcurrent(promises, (p) => p, { concurrency: 2 });
+    } catch (e) {
+      expect(e).toBeInstanceOf(TypeError);
+      expect((e as Error).message).toContain('Promise');
+      expect((e as Error).message).toContain('input[0]');
+      return;
+    }
+    throw new Error('no throw');
+  });
+
+  it('input with a thenable at a later index → reports that index', async () => {
+    const input: unknown[] = [1, 2, Promise.resolve(3)];
+    try {
+      await mapConcurrent(input, (x) => x, { concurrency: 2 });
+    } catch (e) {
+      expect((e as Error).message).toContain('input[2]');
+      return;
+    }
+    throw new Error('no throw');
+  });
+
+  it('mapSettled and forEachConcurrent guard the input too', async () => {
+    const p = [Promise.resolve(1)];
+    await expect(mapSettled(p, (x) => x, { concurrency: 1 })).rejects.toBeInstanceOf(TypeError);
+    await expect(forEachConcurrent(p, (x) => x, { concurrency: 1 })).rejects.toBeInstanceOf(
+      TypeError,
+    );
+  });
+
+  it('plain-value arrays and lazy iterables are NOT rejected', async () => {
+    await expect(mapConcurrent([1, 2, 3], async (n) => n, { concurrency: 2 })).resolves.toEqual([
+      1, 2, 3,
+    ]);
+    function* gen() {
+      yield 1;
+      yield 2;
+    }
+    await expect(mapConcurrent(gen(), async (n) => n, { concurrency: 2 })).resolves.toEqual([1, 2]);
+  });
 });
 
 // -------- forEachConcurrent basic --------
