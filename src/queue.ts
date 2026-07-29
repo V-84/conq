@@ -50,6 +50,7 @@ interface QueuedTask extends HeapItem {
   taskSignal?: AbortSignal;
   timeoutMs: number | undefined;
   retry: NormalizedRetry;
+  abortListener: (() => void) | undefined;
 }
 
 export class Queue {
@@ -85,8 +86,10 @@ export class Queue {
           // (e.g. when paused or autoStart:false and nothing is draining them).
           const drained = this.#heap.drain();
           for (const item of drained) {
+            this.#detachTaskAbort(item);
             item.deferred.reject(new AbortError('Queue aborted', this.#externalSignal!.reason));
           }
+          this.#maybeResolveEmpty();
           this.#maybeResolveIdle();
         },
         { once: true },
@@ -141,6 +144,7 @@ export class Queue {
       deferred: d as Deferred<unknown>,
       timeoutMs,
       retry: taskRetry,
+      abortListener: undefined,
     };
     if (options.signal) entry.taskSignal = options.signal;
 
@@ -153,6 +157,18 @@ export class Queue {
       return d.promise;
     }
     this.#heap.push(entry);
+    if (options.signal) {
+      const onTaskAbort = () => {
+        if (!this.#heap.remove(entry)) return;
+        this.#detachTaskAbort(entry);
+        d.reject(new AbortError('Aborted', options.signal!.reason));
+        this.#maybeResolveEmpty();
+        this.#maybeResolveIdle();
+      };
+      entry.abortListener = onTaskAbort;
+      options.signal.addEventListener('abort', onTaskAbort, { once: true });
+      if (options.signal.aborted) onTaskAbort();
+    }
     this.#tick();
     return d.promise;
   }
@@ -184,6 +200,7 @@ export class Queue {
   clear(): number {
     const drained = this.#heap.drain();
     for (const item of drained) {
+      this.#detachTaskAbort(item);
       item.deferred.reject(new AbortError('Task cleared'));
     }
     // If nothing in flight, we're now idle/empty.
@@ -221,9 +238,9 @@ export class Queue {
     while (this.#running < this.#concurrency && this.#heap.size > 0) {
       const item = this.#heap.pop();
       if (!item) break;
+      this.#detachTaskAbort(item);
       if (this.#heap.size === 0) {
-        this.#onEmptyDeferred?.resolve();
-        this.#onEmptyDeferred = undefined;
+        this.#maybeResolveEmpty();
       }
       this.#running++;
       this.#runOne(item).finally(() => {
@@ -261,6 +278,20 @@ export class Queue {
     if (this.#running === 0 && this.#heap.size === 0) {
       this.#onIdleDeferred?.resolve();
       this.#onIdleDeferred = undefined;
+    }
+  }
+
+  #maybeResolveEmpty(): void {
+    if (this.#heap.size === 0) {
+      this.#onEmptyDeferred?.resolve();
+      this.#onEmptyDeferred = undefined;
+    }
+  }
+
+  #detachTaskAbort(item: QueuedTask): void {
+    if (item.taskSignal && item.abortListener) {
+      item.taskSignal.removeEventListener('abort', item.abortListener);
+      item.abortListener = undefined;
     }
   }
 }

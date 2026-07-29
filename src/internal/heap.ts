@@ -31,6 +31,20 @@ export class MinHeap<T extends HeapItem> {
     return top;
   }
 
+  remove(item: T): boolean {
+    const a = this.#a;
+    const index = a.indexOf(item);
+    if (index === -1) return false;
+    const last = a.pop()!;
+    if (index < a.length) {
+      a[index] = last;
+      const parent = (index - 1) >> 1;
+      if (index > 0 && this.#less(index, parent)) this.#siftUp(index);
+      else this.#siftDown(index);
+    }
+    return true;
+  }
+
   drain(): T[] {
     const out = this.#a.slice();
     this.#a.length = 0;

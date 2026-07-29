@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { AbortError, Queue } from '../src/index.js';
 import { deferred } from '../src/internal/deferred.js';
+import { MinHeap } from '../src/internal/heap.js';
 import { anySignal } from '../src/internal/signal.js';
 import { createRateLimiter } from '../src/rate-limit.js';
 import { withRetry } from '../src/retry.js';
@@ -26,6 +27,24 @@ describe('deferred fallback', () => {
     const d2 = deferred<number>();
     d2.reject(new Error('x'));
     await expect(d2.promise).rejects.toThrow('x');
+  });
+});
+
+describe('heap removal', () => {
+  it('removes an arbitrary queued item and preserves heap ordering', () => {
+    const heap = new MinHeap<{ priority: number; seq: number }>();
+    const low = { priority: 1, seq: 0 };
+    const highest = { priority: 10, seq: 1 };
+    const middle = { priority: 5, seq: 2 };
+    const tied = { priority: 5, seq: 3 };
+    heap.push(low);
+    heap.push(highest);
+    heap.push(middle);
+    heap.push(tied);
+
+    expect(heap.remove(middle)).toBe(true);
+    expect(heap.remove(middle)).toBe(false);
+    expect([heap.pop(), heap.pop(), heap.pop()]).toEqual([highest, tied, low]);
   });
 });
 

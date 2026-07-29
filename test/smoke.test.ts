@@ -65,10 +65,19 @@ describe('SC-25/33: packed tarball smoke tests (ESM + CJS)', () => {
   it('SC-19: no process retention — child mapConcurrent with timeout+rate exits within 5s', () => {
     const script = `
       const { mapConcurrent } = require('conq');
+      const watchdog = setTimeout(() => {
+        console.error('WORK DID NOT COMPLETE');
+        process.exit(3);
+      }, 4000);
       (async () => {
         const r = await mapConcurrent([1,2,3], async (n) => n, { timeoutMs: 100, intervalMs: 50, intervalCap: 1 });
         if (r[2] !== 3) process.exit(2);
-      })();
+        console.log('COMPLETED');
+        clearTimeout(watchdog);
+      })().catch((error) => {
+        console.error(error);
+        process.exit(1);
+      });
     `;
     writeFileSync(join(SCRATCH, 'exit-test.cjs'), script);
     const t0 = Date.now();
@@ -78,6 +87,7 @@ describe('SC-25/33: packed tarball smoke tests (ESM + CJS)', () => {
       timeout: 5000,
     });
     expect(r.status, `stderr=${r.stderr}`).toBe(0);
+    expect(r.stdout).toContain('COMPLETED');
     expect(Date.now() - t0).toBeLessThan(5000);
   });
 });

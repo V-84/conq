@@ -8,7 +8,11 @@ import { AbortError, TimeoutError, isAbortError } from './errors.js';
 import { type RateLimiter, createRateLimiter } from './rate-limit.js';
 import { NO_RETRY, type NormalizedRetry, computeBackoffMs, normalizeRetry } from './retry.js';
 import type { ProgressInfo, RunOptions } from './types.js';
-import { validateNonNegativeFinite, validatePositiveIntOrInfinity } from './validate.js';
+import {
+  assertPulledValueNotThenable,
+  validateNonNegativeFinite,
+  validatePositiveIntOrInfinity,
+} from './validate.js';
 
 export interface PoolRunnerContext {
   signal: AbortSignal;
@@ -220,6 +224,7 @@ export async function runPool<T, R>(opts: PoolOptions<T, R>): Promise<PoolResult
       let step: IteratorResult<T>;
       try {
         step = await pullNext();
+        if (!step.done) assertPulledValueNotThenable(step.value, started);
       } catch (err) {
         internalController.abort(err);
         if (!firstRejection) firstRejection = { reason: err, index: -1 };

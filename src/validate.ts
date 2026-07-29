@@ -72,24 +72,44 @@ export function assertTaskFunction(value: unknown, index: number, label = 'task'
  * Promises whose work has already started, so concurrency is meaningless. This
  * is the exact case the README leads with (§4.16, A4).
  *
- * Only materialized arrays are checked (O(1): first element only), so lazy
- * Iterables and AsyncIterables are never eagerly pulled. A single thenable
- * element is enough to diagnose the mistake; we do not walk the whole array.
+ * Materialized arrays are scanned once so every already-rejected Promise is
+ * observed before Node can report it as unhandled. Lazy Iterable and
+ * AsyncIterable values are instead validated one at a time by `runPool` as
+ * they are pulled, preserving streaming behavior.
  */
 export function assertInputNotThenable(input: unknown): void {
+  if (isThenable(input)) {
+    observeThenable(input);
+    throwInputPromise(0);
+  }
   if (!Array.isArray(input) || input.length === 0) return;
   let foundIndex = -1;
   for (let i = 0; i < input.length; i++) {
     if (isThenable(input[i])) {
       if (foundIndex === -1) foundIndex = i;
       // Observe every thenable's rejection to prevent unhandled-rejection crashes (SC-6).
-      (input[i] as PromiseLike<unknown>).then(undefined, () => {});
+      observeThenable(input[i]);
     }
   }
   if (foundIndex === -1) return;
+  throwInputPromise(foundIndex);
+}
+
+/** Validate lazy iterable values at the point the scheduler pulls them. */
+export function assertPulledValueNotThenable(value: unknown, index: number): void {
+  if (!isThenable(value)) return;
+  observeThenable(value);
+  throwInputPromise(index);
+}
+
+function throwInputPromise(index: number): never {
   throw new TypeError(
-    `conq: input[${foundIndex}] is a Promise, not a value.\nPassing already-created Promises means the work has already started, so conq\ncannot bound concurrency or rate. Pass plain items and do the work in the worker:\n  conq.mapConcurrent(items, (item) => doWork(item))`,
+    `conq: input[${index}] is a Promise, not a value.\nPassing already-created Promises means the work has already started, so conq\ncannot bound concurrency or rate. Pass plain items and do the work in the worker:\n  conq.mapConcurrent(items, (item) => doWork(item))`,
   );
+}
+
+function observeThenable(value: unknown): void {
+  (value as PromiseLike<unknown>).then(undefined, () => {});
 }
 
 function isThenable(value: unknown): boolean {

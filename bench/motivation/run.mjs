@@ -55,16 +55,25 @@ console.log(
 
 console.log('\n== Zero-latency channel ==');
 const zeroLat = () => 0;
-console.log(fmt(await runArm('A: p-queue + p-retry', armA, zeroLat)));
-console.log(fmt(await runArm('B: conq-style (inline)', armBSettled, zeroLat)));
-console.log(fmt(await runArm('C: p-queue + manual re-add', armC, zeroLat)));
+const zeroRows = [
+  await runArm('A: p-queue + p-retry', armA, zeroLat),
+  await runArm('B: conq-style (inline)', armBSettled, zeroLat),
+  await runArm('C: p-queue + manual re-add', armC, zeroLat),
+];
+for (const row of zeroRows) console.log(fmt(row));
 
 console.log('\n== Jittered latency probe ==');
 const jitter = (rand) => 5 + Math.floor(rand() * 15);
-console.log(fmt(await runArm('A: p-queue + p-retry', armA, jitter)));
-console.log(fmt(await runArm('B: conq-style (inline)', armBSettled, jitter)));
-console.log(fmt(await runArm('C: p-queue + manual re-add', armC, jitter)));
+const jitterRows = [
+  await runArm('A: p-queue + p-retry', armA, jitter),
+  await runArm('B: conq-style (inline)', armBSettled, jitter),
+  await runArm('C: p-queue + manual re-add', armC, jitter),
+];
+for (const row of jitterRows) console.log(fmt(row));
 
-console.log('\nHeadline: A loses ~29% of tasks; B and C lose ~0-2%.');
-console.log('The zero-latency channel makes B/C emit zero 429s (client and server share');
-console.log('Date.now()); under real latency both compliant arms still emit some 429s.');
+const percentLost = (row) => Math.round((row.median.lost / CFG.N) * 100);
+console.log(
+  `\nJitter headline: A loses ${percentLost(jitterRows[0])}% of tasks; B loses ${percentLost(jitterRows[1])}%; C loses ${percentLost(jitterRows[2])}%.`,
+);
+console.log('The zero-latency channel keeps B/C near zero because client and server share');
+console.log('Date.now(); injected pre-admission latency exposes real rolling-window drift.');

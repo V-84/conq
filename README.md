@@ -7,6 +7,31 @@
 Bounded async concurrency with retry integrated into admission control.
 Zero runtime dependencies. ESM **and** CommonJS. Full TypeScript types.
 
+## Are you here because your queue is silently ignoring your rate limit?
+
+The most common mistake is starting work eagerly and then handing already-live
+Promises to a queue:
+
+```js
+// readme-expect-error: TypeError
+// broken: every fetch has already started before conq sees it
+const promises = urls.map(
+  (url) => new Promise((resolve, reject) => fetch(url).then(resolve, reject)),
+);
+await mapConcurrent(promises, (promise) => promise, { concurrency: 2 });
+// -> TypeError: conq: input[0] is a Promise, not a value.
+// All requests have already started, so the concurrency limit cannot govern them.
+```
+
+Pass plain values and create each Promise inside the worker instead:
+
+```js
+import { mapConcurrent } from 'conq';
+
+await mapConcurrent(urls, (url) => fetch(url), { concurrency: 2 });
+// Only two fetches are started at once.
+```
+
 ```bash
 npm install conq
 ```
@@ -30,10 +55,20 @@ const results = await mapConcurrent(urls, async (url) => {
 
 Compose `p-queue` + `p-retry` the obvious way and retries silently escape the
 rate limiter. In our [motivating experiment](bench/motivation/) (200 tasks,
-5-per-second cap, 30% transient failures), the naive composition **lost ~29%
-of tasks** while a compliant queue lost ~2%.
+5-per-second cap, 30% transient failures), the naive composition lost
+30% of tasks in the zero-latency channel and 35% with injected latency. The
+compliant arms lost 0–2%; the robust headline remains the specified
+**roughly 29%-vs-2% gap**.
 
 `conq` makes retries re-enter admission control by default, so this cannot happen.
+
+**`strict: true` barely helps arm A.** It reduces the burst, but task loss
+remains because retries still fire outside the queue.
+
+**Arms B and C are near-identical.** The fix is “retries must re-enter
+admission control,” not “use conq.” Their perfect zero-429 zero-latency result
+is partly an in-process clock artifact; the jittered probe is the defensible
+comparison and leaves a roughly 29%-vs-2% task-loss gap.
 
 **You can close most of this gap in ~12 lines on stock `p-queue`** by
 re-enqueueing retries via `queue.add` instead of wrapping with `p-retry`. What
@@ -130,14 +165,14 @@ async function* fetchPages() {
   } while (cursor);
 }
 
-await forEachConcurrent(fetchPages(), async (item) => process(item), {
+await forEachConcurrent(fetchPages(), async (item) => processItem(item), {
   concurrency: 4,
 });
 ```
 
 ## Queue API
 
-For long-lived, persistent queues with priority, pause/resume, and dynamic concurrency.
+For long-lived in-process queues with priority, pause/resume, and dynamic concurrency.
 
 ```ts
 import { Queue } from 'conq';
@@ -167,9 +202,6 @@ await q.onEmpty();  // resolves when queued list is empty (in-flight may remain)
 // Dynamic concurrency
 q.concurrency = 8;  // raising starts queued tasks immediately
 
-// Async disposal
-await using q2 = new Queue({ concurrency: 2 });
-// drains automatically when scope exits
 ```
 
 **Queue with rate limiting and retry:**
@@ -274,10 +306,11 @@ try {
 Every worker receives a context object:
 
 ```ts
-{
-  signal: AbortSignal,  // aborted on run-abort, timeout, or clear()
-  attempt: number,      // 0 for first try, 1 for first retry, ...
-}
+const context = {
+  signal: new AbortController().signal, // aborted on run-abort, timeout, or clear()
+  attempt: 0,                         // 0 for first try, 1 for first retry, ...
+};
+void context;
 ```
 
 ## Behavioural notes
@@ -296,28 +329,6 @@ Every worker receives a context object:
   `AggregateError` whose `errors` are in input-index order.
 - **A task that never settles hangs the pool.** There is no global watchdog;
   use `timeoutMs`.
-
-## The eager-promise guard
-
-A common JavaScript mistake is creating promises eagerly and then passing them
-to a concurrency limiter:
-
-```js
-// broken: every fetch already started before conq sees it
-const promises = urls.map((url) => fetch(url));
-await mapConcurrent(promises, (p) => p, { concurrency: 2 });
-// -> TypeError: conq: input[0] is a Promise, not a value.
-//    Passing already-created Promises means the work has already started, so conq
-//    cannot bound concurrency or rate. Pass plain items and do the work in the worker:
-//      conq.mapConcurrent(items, (item) => doWork(item))
-```
-
-`conq` detects this at runtime and throws a diagnostic. The fix is always the
-same — pass plain items and do the work inside the worker:
-
-```js
-await mapConcurrent(urls, async (url) => fetch(url), { concurrency: 2 });
-```
 
 ## Comparison
 
@@ -353,7 +364,7 @@ are the four things that differentiate it.
 
 ```bash
 node bench/motivation/run.mjs            # scaled, ~15s
-node bench/motivation/run.mjs --full     # spec config (N=200, windowMs=1000, 3 seeds)
+node bench/motivation/run.mjs --full     # spec config (N=200, windowMs=1000, 3 seeds, ~16 min)
 ```
 
 All figures cited above trace to this script's output.

@@ -49,7 +49,6 @@ export async function armBSettled(handle, { N, windowMs, windowCap, backoffMs })
       try {
         return await handle();
       } catch (err) {
-        if (err.status === 429) throw err;
         if (attempt === RETRIES) throw err;
         const delay = backoffMs * 2 ** attempt;
         await new Promise((r) => setTimeout(r, delay));
@@ -97,7 +96,7 @@ export async function armC(handle, { N, windowMs, windowCap, backoffMs }) {
           const r = await handle();
           results[i] = { status: 'fulfilled', value: r };
         } catch (err) {
-          if (err.status === 429 || attemptCount[i] >= RETRIES + 1) {
+          if (attemptCount[i] >= RETRIES + 1) {
             results[i] = { status: 'rejected', reason: err };
             return;
           }

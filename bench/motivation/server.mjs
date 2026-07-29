@@ -22,12 +22,21 @@ export function createServer({
 } = {}) {
   const rand = mulberry32(seed);
   const windowStarts = []; // timestamps of accepted requests
+  const requestStarts = []; // timestamps of every request, including rejected attempts
   const stats = { requests: 0, ok: 0, err503: 0, err429: 0, peakWindow: 0 };
 
   const handle = async () => {
     stats.requests++;
+    // Network/service latency occurs before the upstream observes the request.
+    // This deliberately separates client admission time from server admission
+    // time in the jitter probe.
+    const ms = latency(rand);
+    if (ms > 0) await new Promise((r) => setTimeout(r, ms));
     const t = now();
     while (windowStarts.length && windowStarts[0] <= t - windowMs) windowStarts.shift();
+    while (requestStarts.length && requestStarts[0] <= t - windowMs) requestStarts.shift();
+    requestStarts.push(t);
+    if (requestStarts.length > stats.peakWindow) stats.peakWindow = requestStarts.length;
     if (windowStarts.length >= windowCap) {
       stats.err429++;
       const err = new Error('rate-limited');
@@ -35,9 +44,6 @@ export function createServer({
       throw err;
     }
     windowStarts.push(t);
-    if (windowStarts.length > stats.peakWindow) stats.peakWindow = windowStarts.length;
-    const ms = latency(rand);
-    if (ms > 0) await new Promise((r) => setTimeout(r, ms));
     if (rand() < errorRate) {
       stats.err503++;
       const err = new Error('transient');

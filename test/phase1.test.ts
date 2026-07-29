@@ -368,6 +368,37 @@ describe('SC-32 raw-promise guard', () => {
     // Give the event loop a tick to detect any unhandled rejections
     await new Promise((r) => setTimeout(r, 10));
   });
+
+  it('a Promise used as the entire input gets the Promise diagnostic', async () => {
+    const input = Promise.resolve(1);
+    try {
+      await mapConcurrent(input as unknown as number[], async (n) => n);
+    } catch (e) {
+      expect(e).toBeInstanceOf(TypeError);
+      expect((e as Error).message).toContain('Promise');
+      expect((e as Error).message).toContain('input[0]');
+      return;
+    }
+    throw new Error('no throw');
+  });
+
+  it('a rejected Promise used as the entire input is observed', async () => {
+    const input = Promise.reject(new Error('raw'));
+    await expect(
+      mapConcurrent(input as unknown as number[], async (n) => n),
+    ).rejects.toBeInstanceOf(TypeError);
+    await new Promise((r) => setImmediate(r));
+  });
+
+  it('validates Promise values as a lazy iterable pulls them', async () => {
+    function* promises() {
+      yield 1;
+      yield Promise.resolve(2);
+    }
+    await expect(mapConcurrent(promises(), async (n) => n, { concurrency: 1 })).rejects.toThrow(
+      /input\[1\].*Promise/s,
+    );
+  });
 });
 
 // -------- iterator error surfacing even with stopOnError:false --------
