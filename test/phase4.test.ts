@@ -1,5 +1,9 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { forEachConcurrent, mapConcurrent } from '../src/index.js';
+
+const ROOT = resolve(import.meta.dirname, '..');
 
 const unhandled: unknown[] = [];
 const onUnhandled = (r: unknown) => unhandled.push(r);
@@ -11,25 +15,34 @@ afterAll(() => {
 
 // ------------------ SC-16 rate limit ------------------
 describe('SC-16 rate limit', () => {
-  it('intervalCap:2, intervalMs:200 → 6 tasks start at ~0(×2), ~200(×2), ~400(×2)', async () => {
-    // Using real timers with a short window to keep the suite fast.
-    const starts: number[] = [];
-    const t0 = Date.now();
-    await mapConcurrent(
-      Array.from({ length: 6 }, (_, i) => i),
-      async () => {
-        starts.push(Date.now() - t0);
-      },
-      { concurrency: 10, intervalMs: 200, intervalCap: 2 },
-    );
-    starts.sort((a, b) => a - b);
-    // Two starts in first window, two in second, two in third.
-    expect(starts[0]!).toBeLessThan(80);
-    expect(starts[1]!).toBeLessThan(80);
-    expect(starts[2]!).toBeGreaterThanOrEqual(180);
-    expect(starts[3]!).toBeGreaterThanOrEqual(180);
-    expect(starts[4]!).toBeGreaterThanOrEqual(380);
-    expect(starts[5]!).toBeGreaterThanOrEqual(380);
+  it('intervalCap:2, intervalMs:1000 → exact starts at 0, 1000, and 2000', async () => {
+    vi.useFakeTimers();
+    try {
+      const starts: number[] = [];
+      const t0 = Date.now();
+      const result = mapConcurrent(
+        Array.from({ length: 6 }, (_, i) => i),
+        async () => {
+          starts.push(Date.now() - t0);
+        },
+        { concurrency: 10, intervalMs: 1000, intervalCap: 2 },
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(starts).toEqual([0, 0]);
+      await vi.advanceTimersByTimeAsync(999);
+      expect(starts).toEqual([0, 0]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(starts).toEqual([0, 0, 1000, 1000]);
+      await vi.advanceTimersByTimeAsync(999);
+      expect(starts).toEqual([0, 0, 1000, 1000]);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await result;
+      expect(starts).toEqual([0, 0, 1000, 1000, 2000, 2000]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('concurrency:1 + generous rate → serial (min governs)', async () => {
@@ -104,31 +117,18 @@ describe('SC-17 iterable inputs', () => {
 
 // ------------------ SC-18 memory: forEachConcurrent over a giant generator ------------------
 describe('SC-18 forEachConcurrent memory bounds', () => {
-  it('processes 1e6 generator items with concurrency:4 under fixed ceiling', async () => {
-    // Spec requires 1e6 items to make sure no results array is retained.
-    const N = 1_000_000;
-    function* gen() {
-      for (let i = 0; i < N; i++) yield i;
-    }
-    if (global.gc) global.gc();
-    const before = process.memoryUsage().heapUsed;
-    let count = 0;
-    await forEachConcurrent(
-      gen(),
-      async () => {
-        count++;
-      },
-      { concurrency: 4 },
+  it('processes 1e6 items under a 32 MiB forced-GC heap ceiling', () => {
+    execFileSync('npm', ['run', 'build'], { cwd: ROOT, stdio: 'ignore' });
+    const child = spawnSync(
+      process.execPath,
+      ['--expose-gc', resolve(ROOT, 'scripts/memory-gate.mjs')],
+      { cwd: ROOT, encoding: 'utf8', timeout: 60_000 },
     );
-    if (global.gc) global.gc();
-    const after = process.memoryUsage().heapUsed;
-    expect(count).toBe(N);
-    const delta = after - before;
-    // A retained results array of 1e6 entries would be ~50-100MB. Cap at
-    // 250MB to leave headroom for vitest/system noise at this larger scale
-    // while still catching regressions.
-    expect(delta).toBeLessThan(250 * 1024 * 1024);
-  }, 60_000);
+    expect(child.status, `stdout=${child.stdout}\nstderr=${child.stderr}`).toBe(0);
+    const result = JSON.parse(child.stdout) as { count: number; delta: number };
+    expect(result.count).toBe(1_000_000);
+    expect(result.delta).toBeLessThan(32 * 1024 * 1024);
+  }, 90_000);
 
   it('concurrency:Infinity with sized input does not spawn excess runners', async () => {
     let peak = 0;

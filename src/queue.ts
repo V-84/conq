@@ -53,6 +53,18 @@ interface QueuedTask extends HeapItem {
   abortListener: (() => void) | undefined;
 }
 
+/**
+ * Long-lived in-process task queue with priorities, lifecycle controls,
+ * dynamic concurrency, retries, timeouts, abort signals, and rate limiting.
+ *
+ * @example
+ * ```ts
+ * import { Queue } from 'con-q';
+ * const queue = new Queue({ concurrency: 2 });
+ * const value = await queue.add(async () => 42);
+ * await queue.onIdle();
+ * ```
+ */
 export class Queue {
   #concurrency: number;
   #paused: boolean;

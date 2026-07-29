@@ -24,34 +24,48 @@ describe('SC-8 retry + backoff', () => {
   afterEach(() => resetRandom());
 
   it('fails twice then succeeds; onRetry called twice with correct delays', async () => {
-    const calls: { attempt: number; delayMs: number }[] = [];
-    let n = 0;
-    const t0 = Date.now();
-    const res = await mapConcurrent(
-      [1],
-      async () => {
-        n++;
-        if (n < 3) throw new Error(`boom-${n}`);
-        return n;
-      },
-      {
-        retry: {
-          attempts: 3,
-          minDelayMs: 30,
-          factor: 2,
-          jitter: 'none',
-          onRetry: (info) => calls.push({ attempt: info.attempt, delayMs: info.delayMs }),
+    vi.useFakeTimers();
+    try {
+      const calls: { attempt: number; delayMs: number }[] = [];
+      const invocations: number[] = [];
+      const t0 = Date.now();
+      const result = mapConcurrent(
+        [1],
+        async () => {
+          invocations.push(Date.now() - t0);
+          if (invocations.length < 3) throw new Error(`boom-${invocations.length}`);
+          return invocations.length;
         },
-      },
-    );
-    expect(res).toEqual([3]);
-    expect(n).toBe(3);
-    expect(calls).toEqual([
-      { attempt: 1, delayMs: 30 },
-      { attempt: 2, delayMs: 60 },
-    ]);
-    // Wall clock at least 30+60ms
-    expect(Date.now() - t0).toBeGreaterThanOrEqual(85);
+        {
+          retry: {
+            attempts: 3,
+            minDelayMs: 100,
+            factor: 2,
+            jitter: 'none',
+            onRetry: (info) => calls.push({ attempt: info.attempt, delayMs: info.delayMs }),
+          },
+        },
+      );
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(invocations).toEqual([0]);
+      await vi.advanceTimersByTimeAsync(99);
+      expect(invocations).toEqual([0]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(invocations).toEqual([0, 100]);
+      await vi.advanceTimersByTimeAsync(199);
+      expect(invocations).toEqual([0, 100]);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(result).resolves.toEqual([3]);
+      expect(invocations).toEqual([0, 100, 300]);
+      expect(calls).toEqual([
+        { attempt: 1, delayMs: 100 },
+        { attempt: 2, delayMs: 200 },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('maxDelayMs caps the backoff', async () => {
