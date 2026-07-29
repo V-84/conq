@@ -1,5 +1,8 @@
 # conq
 
+[![CI](https://github.com/V-84/conq/actions/workflows/ci.yml/badge.svg)](https://github.com/V-84/conq/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/V-84/conq/graph/badge.svg?token=a6764b50-c5c4-4a96-b798-2029ba9b6a3d)](https://codecov.io/gh/V-84/conq)
+
 Bounded async concurrency with retry integrated into admission control.
 Zero runtime dependencies. ESM **and** CommonJS. Full types.
 

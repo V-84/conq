@@ -23,5 +23,12 @@ jobs:
       - run: npx tsc -p tsconfig.base.json --noEmit
       - run: npx biome check .
       - run: npx vitest run --coverage
+      - name: Upload coverage to Codecov
+        if: matrix.node == '24'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage
+          fail_ci_if_error: true
       - run: npm run build
       - run: npx publint
