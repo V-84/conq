@@ -3,7 +3,7 @@
  *
  * @example
  * ```ts
- * import { mapConcurrent, TimeoutError } from 'c-queue';
+ * import { mapConcurrent, TimeoutError } from 'qfence';
  * try {
  *   await mapConcurrent([1], async () => new Promise(() => {}), { timeoutMs: 50 });
  * } catch (err) {
@@ -28,7 +28,7 @@ export class TimeoutError extends Error {
  *
  * @example
  * ```ts
- * import { mapConcurrent, AbortError } from 'c-queue';
+ * import { mapConcurrent, AbortError } from 'qfence';
  * const ac = new AbortController(); ac.abort('user cancelled');
  * try { await mapConcurrent([1], async () => 1, { signal: ac.signal }); }
  * catch (err) { if (err instanceof AbortError) console.log(err.cause); }

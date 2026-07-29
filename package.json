@@ -1,5 +1,5 @@
 {
-  "name": "c-queue",
+  "name": "qfence",
   "version": "1.0.0",
   "description": "Bounded async concurrency with retry integrated into admission control. Zero deps. ESM + CJS.",
   "type": "module",
@@ -10,7 +10,7 @@
   "files": ["dist", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/v-84/c-queue.git"
+    "url": "git+https://github.com/v-84/qfence.git"
   },
   "license": "MIT",
   "keywords": [
