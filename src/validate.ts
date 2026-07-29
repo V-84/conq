@@ -15,6 +15,13 @@ export function validatePositiveIntOrInfinity(name: string, value: unknown): num
   return value;
 }
 
+export function validatePositiveInt(name: string, value: unknown): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+    throw new TypeError(`conq: '${name}' must be a positive integer, received ${describe(value)}`);
+  }
+  return value;
+}
+
 export function validateNonNegativeInt(name: string, value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
     throw new TypeError(
@@ -71,10 +78,17 @@ export function assertTaskFunction(value: unknown, index: number, label = 'task'
  */
 export function assertInputNotThenable(input: unknown): void {
   if (!Array.isArray(input) || input.length === 0) return;
-  const index = input.findIndex(isThenable);
-  if (index === -1) return;
+  let foundIndex = -1;
+  for (let i = 0; i < input.length; i++) {
+    if (isThenable(input[i])) {
+      if (foundIndex === -1) foundIndex = i;
+      // Observe every thenable's rejection to prevent unhandled-rejection crashes (SC-6).
+      (input[i] as PromiseLike<unknown>).then(undefined, () => {});
+    }
+  }
+  if (foundIndex === -1) return;
   throw new TypeError(
-    `conq: input[${index}] is a Promise, not a value.\nPassing already-created Promises means the work has already started, so conq\ncannot bound concurrency or rate. Pass plain items and do the work in the worker:\n  conq.mapConcurrent(items, (item) => doWork(item))`,
+    `conq: input[${foundIndex}] is a Promise, not a value.\nPassing already-created Promises means the work has already started, so conq\ncannot bound concurrency or rate. Pass plain items and do the work in the worker:\n  conq.mapConcurrent(items, (item) => doWork(item))`,
   );
 }
 

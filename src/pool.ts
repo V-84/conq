@@ -262,11 +262,11 @@ export async function runPool<T, R>(opts: PoolOptions<T, R>): Promise<PoolResult
 
   const limit = concurrency === Number.POSITIVE_INFINITY ? Number.POSITIVE_INFINITY : concurrency;
   const effective =
-    limit === Number.POSITIVE_INFINITY || opts.total === undefined
-      ? Number.isFinite(limit)
+    limit === Number.POSITIVE_INFINITY
+      ? (opts.total ?? 1024)
+      : opts.total === undefined
         ? limit
-        : 1024
-      : Math.min(limit, opts.total);
+        : Math.min(limit, opts.total);
   const runnerCount = Math.max(1, effective);
   const runners = Array.from({ length: runnerCount }, () => runner());
   try {
@@ -290,6 +290,9 @@ export async function runPool<T, R>(opts: PoolOptions<T, R>): Promise<PoolResult
 
   if (signal?.aborted) throw new AbortError('Aborted', signal.reason);
   if (firstRejection && stopOnError) throw firstRejection.reason;
+  // Iterator errors are structural failures, not task failures — they always
+  // surface, even with stopOnError:false.
+  if (firstRejection && firstRejection.index === -1) throw firstRejection.reason;
   return results;
 }
 

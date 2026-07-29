@@ -347,4 +347,15 @@ describe('retry option validation', () => {
       mapConcurrent([1], async (n) => n, { retry: { [k]: v } as RetryOptions }),
     ).rejects.toBeInstanceOf(TypeError);
   });
+
+  it('attempts: Infinity → TypeError', async () => {
+    await expect(
+      mapConcurrent([1], async (n) => n, { retry: { attempts: Number.POSITIVE_INFINITY } }),
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('withRetry rejects non-function task', () => {
+    // @ts-expect-error testing runtime guard for non-function argument
+    expect(() => withRetry(Promise.resolve(1))).toThrow(TypeError);
+  });
 });

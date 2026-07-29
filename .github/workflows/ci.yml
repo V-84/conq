@@ -21,6 +21,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc -p tsconfig.base.json --noEmit
+      - run: npx tsc -p tsconfig.test.json --noEmit
       - run: npx biome check .
       - run: npx vitest run --coverage
       - name: Upload coverage to Codecov

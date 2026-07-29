@@ -104,11 +104,9 @@ describe('SC-17 iterable inputs', () => {
 
 // ------------------ SC-18 memory: forEachConcurrent over a giant generator ------------------
 describe('SC-18 forEachConcurrent memory bounds', () => {
-  it('processes 200k generator items with concurrency:4 under fixed ceiling', async () => {
-    // Downscaled from 1e6 to keep the default suite fast; kept at 200k which
-    // is still well beyond what an array of settled-results would fit under
-    // the assert.
-    const N = 200_000;
+  it('processes 1e6 generator items with concurrency:4 under fixed ceiling', async () => {
+    // Spec requires 1e6 items to make sure no results array is retained.
+    const N = 1_000_000;
     function* gen() {
       for (let i = 0; i < N; i++) yield i;
     }
@@ -126,8 +124,25 @@ describe('SC-18 forEachConcurrent memory bounds', () => {
     const after = process.memoryUsage().heapUsed;
     expect(count).toBe(N);
     const delta = after - before;
-    // A retained results array of 200k entries would be ~10-20MB. Cap at 50MB
-    // to leave headroom for vitest/system noise while still catching regressions.
-    expect(delta).toBeLessThan(50 * 1024 * 1024);
-  }, 30_000);
+    // A retained results array of 1e6 entries would be ~50-100MB. Cap at
+    // 250MB to leave headroom for vitest/system noise at this larger scale
+    // while still catching regressions.
+    expect(delta).toBeLessThan(250 * 1024 * 1024);
+  }, 60_000);
+
+  it('concurrency:Infinity with sized input does not spawn excess runners', async () => {
+    let peak = 0;
+    let inFlight = 0;
+    await mapConcurrent(
+      [1],
+      async () => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await new Promise((r) => setTimeout(r, 10));
+        inFlight--;
+      },
+      { concurrency: Number.POSITIVE_INFINITY },
+    );
+    expect(peak).toBe(1);
+  });
 });

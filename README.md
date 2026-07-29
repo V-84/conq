@@ -20,6 +20,10 @@ the queue:
 const items = [1, 2, 3, 4];
 const promises = items.map((i) => new Promise((resolve) => fetch(url(i)).then(resolve)));
 await mapConcurrent(promises, (p) => p, { concurrency: 2 }); // concurrency is meaningless here
+// -> TypeError: conq: input[0] is a Promise, not a value.
+//    Passing already-created Promises means the work has already started, so conq
+//    cannot bound concurrency or rate. Pass plain items and do the work in the worker:
+//      conq.mapConcurrent(items, (item) => doWork(item))
 ```
 
 `conq` detects this at runtime and throws a diagnostic instead of silently
@@ -51,8 +55,10 @@ for (const item of items) {
 ```
 
 In the motivating experiment (`bench/motivation/`, arms A/B/C, 200 tasks, 5-per-1000ms
-limit, 30% transient-503 injection, seeded), this composition **lost 29% of
-tasks** to exhausted retry budgets while a compliant queue lost none.
+limit, 30% transient-503 injection, seeded), this composition **lost ~29% of
+tasks** to exhausted retry budgets. Under jittered latency both compliant arms
+(B and C) lose ~2%, making the robust headline a **29%-vs-2% gap** — not a
+perfect zero, but a gap that widens under realistic conditions.
 
 `conq` re-enters admission control on every attempt:
 
@@ -149,7 +155,7 @@ await q.onIdle();
 | Pause / resume / clear / `onIdle` | ✗ | ✗ | ✗ | ✓ | ✓ (parity) |
 | Dynamic concurrency | ✗ | ✗ | ✗ | ✓ | ✓ (parity) |
 | Per-task timeout | ✗ | ✗ | ✗ | ✓ | ✓ (parity) |
-| `AbortSignal` | ✓ | via wrapping | ✓ | ✓ | ✓ (parity) |
+| `AbortSignal` | ✗ | via wrapping | ✓ | ✓ | ✓ (parity) |
 | **Retry inside admission control** | ✗ | ✗ | ✗ | ✗ (composable, ~12-line workaround) | **✓ (A1)** |
 | **CommonJS support** | n/a | ✗ | ✗ | ✗ | **✓ (A2)** |
 | **First-error abort *awaits in-flight settlement*** | ✗ (`Promise.all` abandons) | n/a | ✗ | ✗ | **✓ (A3)** |

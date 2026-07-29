@@ -70,7 +70,7 @@ describe('SC-2 concurrency ceiling', () => {
 // -------- SC-3: order preservation --------
 describe('SC-3 order preservation', () => {
   it('reversed completion order still yields input-indexed results', async () => {
-    for (let run = 0; run < 20; run++) {
+    for (let run = 0; run < 200; run++) {
       const n = 20;
       const items = Array.from({ length: n }, (_, i) => i);
       const out = await mapConcurrent(
@@ -83,32 +83,37 @@ describe('SC-3 order preservation', () => {
       );
       expect(out).toEqual(items.map((i) => i * i));
     }
-  });
+  }, 30_000);
 });
 
-// -------- SC-4: immediate refill --------
+// -------- SC-4: immediate refill (fake timers, event log) --------
 describe('SC-4 immediate refill', () => {
-  it('starts item 3 before item 0 finishes when the slot frees', async () => {
-    const durations = [200, 20, 20, 20];
-    const started: number[] = [];
-    const finished: number[] = [];
-    const t0 = Date.now();
-    await mapConcurrent(
+  it('durations [1000,10,10,10], concurrency:2 → ~1000ms not ~2000ms; item 3 starts before item 0 finishes', async () => {
+    vi.useFakeTimers();
+    const durations = [1000, 10, 10, 10];
+    const log: string[] = [];
+    const p = mapConcurrent(
       durations,
       async (d, i) => {
-        started.push(i);
+        log.push(`start${i}`);
         await new Promise((r) => setTimeout(r, d));
-        finished.push(i);
+        log.push(`finish${i}`);
       },
       { concurrency: 2 },
     );
-    // Item 3 must start before item 0 finishes.
-    const item0FinishIdx = finished.indexOf(0);
-    const item3StartIdx = started.indexOf(3);
-    expect(item3StartIdx).toBeGreaterThanOrEqual(0);
-    expect(item0FinishIdx).toBeGreaterThan(-1);
-    // Total wall clock ~ around 200-260ms, definitely well under 2×200.
-    expect(Date.now() - t0).toBeLessThan(350);
+    // Advance enough to finish everything (~1000ms for longest task).
+    await vi.advanceTimersByTimeAsync(1100);
+    await p;
+    vi.useRealTimers();
+    // Item 3 must have started before item 0 finished (immediate refill).
+    const start3 = log.indexOf('start3');
+    const finish0 = log.indexOf('finish0');
+    expect(start3).toBeGreaterThanOrEqual(0);
+    expect(finish0).toBeGreaterThan(-1);
+    expect(start3).toBeLessThan(finish0);
+    // Total event count: 4 starts + 4 finishes
+    expect(log.filter((e) => e.startsWith('start')).length).toBe(4);
+    expect(log.filter((e) => e.startsWith('finish')).length).toBe(4);
   });
 });
 
@@ -353,6 +358,52 @@ describe('SC-32 raw-promise guard', () => {
       yield 2;
     }
     await expect(mapConcurrent(gen(), async (n) => n, { concurrency: 2 })).resolves.toEqual([1, 2]);
+  });
+
+  it('input with Promise.reject does not cause unhandled rejection', async () => {
+    const input = [Promise.reject(new Error('r1')), Promise.reject(new Error('r2'))];
+    await expect(mapConcurrent(input, (x) => x, { concurrency: 2 })).rejects.toBeInstanceOf(
+      TypeError,
+    );
+    // Give the event loop a tick to detect any unhandled rejections
+    await new Promise((r) => setTimeout(r, 10));
+  });
+});
+
+// -------- iterator error surfacing even with stopOnError:false --------
+describe('iterator error surfacing', () => {
+  it('iterator failure surfaces even with stopOnError:false', async () => {
+    async function* bad() {
+      yield 1;
+      throw new Error('iter-fail');
+    }
+    await expect(mapConcurrent(bad(), async (n) => n, { stopOnError: false })).rejects.toThrow(
+      'iter-fail',
+    );
+  });
+
+  it('mapSettled surfaces iterator failure', async () => {
+    async function* bad() {
+      yield 1;
+      throw new Error('iter-fail');
+    }
+    await expect(mapSettled(bad(), async (n) => n)).rejects.toThrow('iter-fail');
+  });
+
+  it('forEachConcurrent surfaces iterator failure with stopOnError:false', async () => {
+    async function* bad() {
+      yield 1;
+      throw new Error('iter-fail');
+    }
+    await expect(
+      forEachConcurrent(
+        bad(),
+        async (n) => {
+          /* discard */
+        },
+        { stopOnError: false },
+      ),
+    ).rejects.toThrow('iter-fail');
   });
 });
 

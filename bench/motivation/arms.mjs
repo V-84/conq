@@ -1,5 +1,5 @@
 import PQueue from 'p-queue';
-import pRetry, { AbortError as PRetryAbort } from 'p-retry';
+import pRetry from 'p-retry';
 
 const CONCURRENCY = 10;
 const RETRIES = 4; // 4 additional attempts after the first (5 total)
@@ -13,21 +13,14 @@ export async function armA(handle, { N, windowMs, windowCap, backoffMs }) {
     interval: windowMs,
     intervalCap: windowCap,
     carryoverConcurrencyCount: true,
+    strict: true,
   });
   const results = await Promise.allSettled(
     Array.from({ length: N }, (_, i) =>
       queue.add(() =>
-        pRetry(
-          async () => {
-            try {
-              return await handle();
-            } catch (err) {
-              if (err.status === 429) throw new PRetryAbort(err);
-              throw err;
-            }
-          },
-          { retries: RETRIES, minTimeout: backoffMs, factor: 2 },
-        ).then((r) => ({ i, ...r })),
+        pRetry(() => handle(), { retries: RETRIES, minTimeout: backoffMs, factor: 2 }).then(
+          (r) => ({ i, ...r }),
+        ),
       ),
     ),
   );
@@ -89,6 +82,7 @@ export async function armC(handle, { N, windowMs, windowCap, backoffMs }) {
     interval: windowMs,
     intervalCap: windowCap,
     carryoverConcurrencyCount: true,
+    strict: true,
   });
   const results = new Array(N);
   const attemptCount = new Array(N).fill(0);
@@ -103,7 +97,7 @@ export async function armC(handle, { N, windowMs, windowCap, backoffMs }) {
           const r = await handle();
           results[i] = { status: 'fulfilled', value: r };
         } catch (err) {
-          if (err.status === 429 || attemptCount[i] > RETRIES + 1) {
+          if (err.status === 429 || attemptCount[i] >= RETRIES + 1) {
             results[i] = { status: 'rejected', reason: err };
             return;
           }

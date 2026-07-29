@@ -9,9 +9,10 @@ import { isAbortError } from './errors.js';
 import { random } from './internal/random.js';
 import type { RetryOptions, Task, TaskContext } from './types.js';
 import {
+  assertTaskFunction,
   validateFactor,
   validateNonNegativeFinite,
-  validatePositiveIntOrInfinity,
+  validatePositiveInt,
 } from './validate.js';
 
 export interface NormalizedRetry {
@@ -35,8 +36,7 @@ export const NO_RETRY: NormalizedRetry = {
 
 export function normalizeRetry(r?: RetryOptions): NormalizedRetry {
   if (!r) return NO_RETRY;
-  const attempts =
-    r.attempts === undefined ? 1 : validatePositiveIntOrInfinity('attempts', r.attempts);
+  const attempts = r.attempts === undefined ? 1 : validatePositiveInt('attempts', r.attempts);
   const minDelayMs =
     r.minDelayMs === undefined ? 100 : validateNonNegativeFinite('minDelayMs', r.minDelayMs);
   const maxDelayMs =
@@ -82,6 +82,7 @@ function defaultIsRetryable(err: unknown): boolean {
  * ```
  */
 export function withRetry<T>(task: Task<T>, options?: RetryOptions): Task<T> {
+  assertTaskFunction(task, 0, 'task');
   const cfg = normalizeRetry(options);
   return async (ctx: TaskContext): Promise<T> => {
     let lastErr: unknown;

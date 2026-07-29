@@ -30,6 +30,12 @@ export interface QueueOptions extends RunOptions {
 
 /**
  * Per-task overrides for options declared on the queue.
+ *
+ * @example
+ * ```ts
+ * const q = new Queue({ concurrency: 2 });
+ * await q.add(async (ctx) => fetch('/api'), { priority: 10, timeoutMs: 5000 });
+ * ```
  */
 export interface TaskOptions {
   priority?: number;
@@ -73,7 +79,16 @@ export class Queue {
     } else if (this.#externalSignal) {
       this.#externalSignal.addEventListener(
         'abort',
-        () => this.#controller.abort(this.#externalSignal!.reason),
+        () => {
+          this.#controller.abort(this.#externalSignal!.reason);
+          // Reject all queued tasks so their promises don't hang forever
+          // (e.g. when paused or autoStart:false and nothing is draining them).
+          const drained = this.#heap.drain();
+          for (const item of drained) {
+            item.deferred.reject(new AbortError('Queue aborted', this.#externalSignal!.reason));
+          }
+          this.#maybeResolveIdle();
+        },
         { once: true },
       );
     }

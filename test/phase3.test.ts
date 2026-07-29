@@ -119,6 +119,19 @@ describe('SC-14 queue lifecycle', () => {
     await expect(p2).rejects.toBeInstanceOf(AbortError);
   });
 
+  it('aborting a paused queue rejects queued tasks', async () => {
+    const ac = new AbortController();
+    const q = new Queue({ concurrency: 1, signal: ac.signal });
+    q.pause();
+    const p1 = q.add(async () => 1);
+    const p2 = q.add(async () => 2);
+    p1.catch(() => {});
+    p2.catch(() => {});
+    ac.abort('done');
+    await expect(p1).rejects.toBeInstanceOf(AbortError);
+    await expect(p2).rejects.toBeInstanceOf(AbortError);
+  });
+
   it('add() rejection safety: ignored rejection does not crash', async () => {
     const q = new Queue({ concurrency: 1 });
     q.add(async () => {
