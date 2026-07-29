@@ -14,13 +14,14 @@ describe('SC-25/33: packed tarball smoke tests (ESM + CJS)', () => {
   beforeAll(() => {
     // 1) fresh build
     execSync('npm run build', { cwd: ROOT, stdio: 'ignore' });
-    // 2) npm pack
-    const packOut = execSync('npm pack --json', { cwd: ROOT }).toString();
-    const info = JSON.parse(packOut) as Array<{ filename: string }>;
-    tarball = resolve(ROOT, info[0]!.filename);
-    // 3) scratch install
+    // 2) scratch dir + npm pack into it (avoids race with jsdoc.test.ts)
     rmSync(SCRATCH, { recursive: true, force: true });
     mkdirSync(SCRATCH, { recursive: true });
+    const packOut = execSync(`npm pack --json --pack-destination "${SCRATCH}"`, {
+      cwd: ROOT,
+    }).toString();
+    const info = JSON.parse(packOut) as Array<{ filename: string }>;
+    tarball = resolve(SCRATCH, info[0]!.filename);
     writeFileSync(
       join(SCRATCH, 'package.json'),
       JSON.stringify({ name: 'smoke', version: '0.0.0', private: true }, null, 2),
@@ -33,7 +34,6 @@ describe('SC-25/33: packed tarball smoke tests (ESM + CJS)', () => {
 
   afterAll(() => {
     rmSync(SCRATCH, { recursive: true, force: true });
-    if (tarball) rmSync(tarball, { force: true });
   });
 
   it('ESM smoke runs clean', () => {

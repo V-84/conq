@@ -10,21 +10,21 @@ const SCRATCH = resolve(ROOT, 'jsdoc-work');
 
 describe('SC-34: JSDoc @type resolves against built package', () => {
   it('tsc --checkJs --noEmit passes', () => {
-    // Build must be up to date; smoke.test.ts already rebuilds. This is
-    // idempotent and cheap for TS 7.
-    execSync('npm run build', { cwd: ROOT, stdio: 'ignore' });
-    const packOut = execSync('npm pack --json', { cwd: ROOT }).toString();
-    const tarball = resolve(
-      ROOT,
-      (JSON.parse(packOut) as Array<{ filename: string }>)[0]!.filename,
-    );
     rmSync(SCRATCH, { recursive: true, force: true });
     mkdirSync(SCRATCH, { recursive: true });
+    execSync('npm run build', { cwd: ROOT, stdio: 'ignore' });
+    const packOut = execSync(`npm pack --json --pack-destination "${SCRATCH}"`, {
+      cwd: ROOT,
+    }).toString();
+    const tarball = resolve(
+      SCRATCH,
+      (JSON.parse(packOut) as Array<{ filename: string }>)[0]!.filename,
+    );
     writeFileSync(
       join(SCRATCH, 'package.json'),
       JSON.stringify({ name: 'jsdoc-smoke', version: '0.0.0', private: true }, null, 2),
     );
-    execSync(`npm install --no-save --silent "${tarball}"`, { cwd: SCRATCH, stdio: 'ignore' });
+    execSync(`npm install --no-save "${tarball}"`, { cwd: SCRATCH, encoding: 'utf8' });
     cpSync(join(HERE, 'jsdoc-smoke.js'), join(SCRATCH, 'jsdoc-smoke.js'));
     writeFileSync(
       join(SCRATCH, 'tsconfig.json'),
@@ -55,7 +55,6 @@ describe('SC-34: JSDoc @type resolves against built package', () => {
       throw new Error(`checkJs failed:\n${e.stdout ?? ''}\n${e.stderr ?? ''}`);
     } finally {
       rmSync(SCRATCH, { recursive: true, force: true });
-      rmSync(tarball, { force: true });
     }
     expect(out).not.toMatch(/error TS/);
   }, 120_000);
