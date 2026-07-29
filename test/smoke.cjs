@@ -1,6 +1,6 @@
 // CJS smoke.
 const assert = require('node:assert').strict;
-const { mapConcurrent, Queue, AbortError, TimeoutError, withRetry } = require('c-queue');
+const { mapConcurrent, Queue, AbortError, TimeoutError, withRetry } = require('queue-warden');
 
 (async () => {
   const r = await mapConcurrent([1, 2, 3, 4], async (n) => n * 2, { concurrency: 2 });

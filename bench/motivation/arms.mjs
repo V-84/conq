@@ -27,7 +27,7 @@ export async function armA(handle, { N, windowMs, windowCap, backoffMs }) {
   return summarize(results);
 }
 
-// Arm B: c-queue-style — retries re-enter admission control through the same gate.
+// Arm B: queue-warden-style — retries re-enter admission control through the same gate.
 export async function armBSettled(handle, { N, windowMs, windowCap, backoffMs }) {
   const starts = []; // rolling window of task-start timestamps
   const acquireToken = async () => {

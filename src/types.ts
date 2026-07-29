@@ -3,7 +3,7 @@
  *
  * @example
  * ```ts
- * import type { Task } from 'c-queue';
+ * import type { Task } from 'queue-warden';
  * const t: Task<string> = async (ctx) => { ctx.signal.throwIfAborted(); return 'x'; };
  * ```
  */
@@ -16,7 +16,7 @@ export type Task<T> = (context: TaskContext) => T | PromiseLike<T>;
  *
  * @example
  * ```ts
- * import { mapConcurrent } from 'c-queue';
+ * import { mapConcurrent } from 'queue-warden';
  * await mapConcurrent([1], async (item, index, ctx) => {
  *   if (ctx.signal.aborted) throw ctx.signal.reason;
  *   return ctx.attempt;
@@ -40,7 +40,7 @@ export interface TaskContext {
  *
  * @example
  * ```ts
- * import { mapConcurrent } from 'c-queue';
+ * import { mapConcurrent } from 'queue-warden';
  * await mapConcurrent(urls, fetchOne, {
  *   retry: { attempts: 3, minDelayMs: 100, factor: 2, jitter: 'full' },
  * });
@@ -62,7 +62,7 @@ export interface RetryOptions {
  *
  * @example
  * ```ts
- * import { mapConcurrent } from 'c-queue';
+ * import { mapConcurrent } from 'queue-warden';
  * await mapConcurrent([1, 2], async (n) => n, {
  *   onProgress: (info) => console.log(`${info.completed}/${info.total ?? '?'}`),
  * });
@@ -82,7 +82,7 @@ export interface ProgressInfo {
  *
  * @example
  * ```ts
- * import { mapConcurrent } from 'c-queue';
+ * import { mapConcurrent } from 'queue-warden';
  * await mapConcurrent([1, 2, 3], async (n) => n * 2, { concurrency: 2 });
  * ```
  */
@@ -103,7 +103,7 @@ export interface RunOptions {
  *
  * @example
  * ```ts
- * import { mapConcurrent } from 'c-queue';
+ * import { mapConcurrent } from 'queue-warden';
  * await mapConcurrent([1, 2], async (n) => n, { stopOnError: false });
  * ```
  */
@@ -116,7 +116,7 @@ export interface MapOptions extends RunOptions {
  *
  * @example
  * ```ts
- * import { mapSettled } from 'c-queue';
+ * import { mapSettled } from 'queue-warden';
  * const rs = await mapSettled([1], async (n) => n);
  * if (rs[0]!.status === 'fulfilled') console.log(rs[0]!.value);
  * ```

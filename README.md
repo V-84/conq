@@ -1,8 +1,8 @@
-# c-queue
+# queue-warden
 
-[![CI](https://github.com/V-84/c-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/V-84/c-queue/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/V-84/c-queue/graph/badge.svg?token=a6764b50-c5c4-4a96-b798-2029ba9b6a3d)](https://codecov.io/gh/V-84/c-queue)
-[![npm](https://img.shields.io/npm/v/c-queue)](https://www.npmjs.com/package/c-queue)
+[![CI](https://github.com/V-84/queue-warden/actions/workflows/ci.yml/badge.svg)](https://github.com/V-84/queue-warden/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/V-84/queue-warden/graph/badge.svg?token=a6764b50-c5c4-4a96-b798-2029ba9b6a3d)](https://codecov.io/gh/V-84/queue-warden)
+[![npm](https://img.shields.io/npm/v/queue-warden)](https://www.npmjs.com/package/queue-warden)
 
 Bounded async concurrency with retry integrated into admission control.
 Zero runtime dependencies. ESM **and** CommonJS. Full TypeScript types.
@@ -14,32 +14,32 @@ Promises to a queue:
 
 ```js
 // readme-expect-error: TypeError
-// broken: every fetch has already started before c-queue sees it
+// broken: every fetch has already started before queue-warden sees it
 const promises = urls.map(
   (url) => new Promise((resolve, reject) => fetch(url).then(resolve, reject)),
 );
 await mapConcurrent(promises, (promise) => promise, { concurrency: 2 });
-// -> TypeError: c-queue: input[0] is a Promise, not a value.
+// -> TypeError: queue-warden: input[0] is a Promise, not a value.
 // All requests have already started, so the concurrency limit cannot govern them.
 ```
 
 Pass plain values and create each Promise inside the worker instead:
 
 ```js
-import { mapConcurrent } from 'c-queue';
+import { mapConcurrent } from 'queue-warden';
 
 await mapConcurrent(urls, (url) => fetch(url), { concurrency: 2 });
 // Only two fetches are started at once.
 ```
 
 ```bash
-npm install c-queue
+npm install queue-warden
 ```
 
 ## Quick start
 
 ```js
-import { mapConcurrent } from 'c-queue';
+import { mapConcurrent } from 'queue-warden';
 
 // Process 100 URLs, 5 at a time, with retry
 const results = await mapConcurrent(urls, async (url) => {
@@ -51,7 +51,7 @@ const results = await mapConcurrent(urls, async (url) => {
 });
 ```
 
-## Why c-queue?
+## Why queue-warden?
 
 Compose `p-queue` + `p-retry` the obvious way and retries silently escape the
 rate limiter. In our [motivating experiment](bench/motivation/) (200 tasks,
@@ -60,19 +60,19 @@ rate limiter. In our [motivating experiment](bench/motivation/) (200 tasks,
 compliant arms lost 0–2%; the robust headline remains the specified
 **roughly 29%-vs-2% gap**.
 
-`c-queue` makes retries re-enter admission control by default, so this cannot happen.
+`queue-warden` makes retries re-enter admission control by default, so this cannot happen.
 
 **`strict: true` barely helps arm A.** It reduces the burst, but task loss
 remains because retries still fire outside the queue.
 
 **Arms B and C are near-identical.** The fix is “retries must re-enter
-admission control,” not “use c-queue.” Their perfect zero-429 zero-latency result
+admission control,” not “use queue-warden.” Their perfect zero-429 zero-latency result
 is partly an in-process clock artifact; the jittered probe is the defensible
 comparison and leaves a roughly 29%-vs-2% task-loss gap.
 
 **You can close most of this gap in ~12 lines on stock `p-queue`** by
 re-enqueueing retries via `queue.add` instead of wrapping with `p-retry`. What
-`c-queue` gives you on top of that: correct-by-default retry, first-error abort
+`queue-warden` gives you on top of that: correct-by-default retry, first-error abort
 that awaits in-flight settlement, a runtime guard for the eager-promise
 mistake, and CommonJS support.
 
@@ -83,7 +83,7 @@ mistake, and CommonJS support.
 Map a worker over items with bounded concurrency. Results preserve input order.
 
 ```ts
-import { mapConcurrent } from 'c-queue';
+import { mapConcurrent } from 'queue-warden';
 
 const doubled = await mapConcurrent([1, 2, 3, 4, 5], async (n) => n * 2, {
   concurrency: 2,
@@ -125,7 +125,7 @@ await mapConcurrent(items, worker, { concurrency: 4, stopOnError: false });
 Like `mapConcurrent` but never rejects for task failures. Returns per-item settled results.
 
 ```ts
-import { mapSettled } from 'c-queue';
+import { mapSettled } from 'queue-warden';
 
 const results = await mapSettled([1, 2, 3], async (n) => {
   if (n === 2) throw new Error('bad');
@@ -142,7 +142,7 @@ const results = await mapSettled([1, 2, 3], async (n) => {
 Fire-and-forget variant. Discards results for O(concurrency) memory on large streams.
 
 ```ts
-import { forEachConcurrent } from 'c-queue';
+import { forEachConcurrent } from 'queue-warden';
 
 await forEachConcurrent(hugeStream, async (record) => {
   await db.insert(record);
@@ -175,7 +175,7 @@ await forEachConcurrent(fetchPages(), async (item) => processItem(item), {
 For long-lived in-process queues with priority, pause/resume, and dynamic concurrency.
 
 ```ts
-import { Queue } from 'c-queue';
+import { Queue } from 'queue-warden';
 
 const q = new Queue({ concurrency: 4 });
 
@@ -233,7 +233,7 @@ with admission control — for that, use `mapConcurrent` or `Queue` with the
 `retry` option.
 
 ```ts
-import { withRetry } from 'c-queue';
+import { withRetry } from 'queue-warden';
 
 const resilientTask = withRetry(async (ctx) => {
   const res = await fetch('/api', { signal: ctx.signal });
@@ -246,7 +246,7 @@ const result = await resilientTask({ signal: controller.signal, attempt: 0 });
 ## Error types
 
 ```ts
-import { TimeoutError, AbortError } from 'c-queue';
+import { TimeoutError, AbortError } from 'queue-warden';
 
 try {
   await mapConcurrent(items, worker, { timeoutMs: 5000 });
@@ -321,7 +321,7 @@ void context;
   constraint, not a library one.
 - **Retry holds its concurrency slot** across the backoff delay, but
   **re-acquires a rate-limit token** before the next attempt. This is the core
-  of what `c-queue` does differently.
+  of what `queue-warden` does differently.
 - **`stopOnError: true` (default) awaits every in-flight task's settlement
   before rejecting.** No orphan promises mutating shared state after your
   `.catch` runs.
@@ -332,7 +332,7 @@ void context;
 
 ## Comparison
 
-| Feature | `Promise.all` | `p-limit` | `p-map` | `p-queue` | **c-queue** |
+| Feature | `Promise.all` | `p-limit` | `p-map` | `p-queue` | **queue-warden** |
 |---|---|---|---|---|---|
 | Bounded concurrency | - | yes | yes | yes | yes (parity) |
 | Order-preserving results | yes | via wrapping | yes | via `addAll` | yes (parity) |
@@ -348,16 +348,16 @@ void context;
 | **First-error abort awaits in-flight** | - (`Promise.all` abandons) | n/a | - | - | **yes** |
 | **Runtime eager-promise guard** | - | - | - | - | **yes** |
 
-Everything above the bold rows is table stakes `c-queue` matches. The bold rows
+Everything above the bold rows is table stakes `queue-warden` matches. The bold rows
 are the four things that differentiate it.
 
-## When you should not use c-queue
+## When you should not use queue-warden
 
 - You already use `p-queue` and are comfortable writing ~12 lines to
   re-enqueue retries. There is nothing else here you can't get.
 - You need persistence, dead-letter queues, or distributed queuing. That is
-  BullMQ / SQS / RabbitMQ territory. `c-queue` is in-process only.
-- You need worker threads or real parallelism. `c-queue` is cooperative I/O
+  BullMQ / SQS / RabbitMQ territory. `queue-warden` is in-process only.
+- You need worker threads or real parallelism. `queue-warden` is cooperative I/O
   concurrency.
 
 ## Reproducing the benchmark

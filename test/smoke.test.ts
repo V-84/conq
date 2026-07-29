@@ -64,7 +64,7 @@ describe('SC-25/33: packed tarball smoke tests (ESM + CJS)', () => {
 
   it('SC-19: no process retention — child mapConcurrent with timeout+rate exits within 5s', () => {
     const script = `
-      const { mapConcurrent } = require('c-queue');
+      const { mapConcurrent } = require('queue-warden');
       const watchdog = setTimeout(() => {
         console.error('WORK DID NOT COMPLETE');
         process.exit(3);

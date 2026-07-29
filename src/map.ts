@@ -10,7 +10,7 @@ import { assertInputNotThenable, assertTaskFunction } from './validate.js';
  *
  * @example
  * ```ts
- * import { mapConcurrent } from 'c-queue';
+ * import { mapConcurrent } from 'queue-warden';
  * const doubled = await mapConcurrent([1, 2, 3], async (n) => n * 2, { concurrency: 2 });
  * // -> [2, 4, 6]
  * ```
@@ -61,7 +61,7 @@ export async function mapConcurrent<T, R>(
  *
  * @example
  * ```ts
- * import { mapSettled } from 'c-queue';
+ * import { mapSettled } from 'queue-warden';
  * const res = await mapSettled([1, 2], async (n) => (n === 1 ? n : Promise.reject('nope')));
  * // res[1] -> { status: 'rejected', reason: 'nope', index: 1 }
  * ```
@@ -102,7 +102,7 @@ export async function mapSettled<T, R>(
  *
  * @example
  * ```ts
- * import { forEachConcurrent } from 'c-queue';
+ * import { forEachConcurrent } from 'queue-warden';
  * await forEachConcurrent(bigStream, async (item) => save(item), { concurrency: 8 });
  * ```
  */
