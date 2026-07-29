@@ -1,6 +1,6 @@
 # Motivation benchmark
 
-Reproduces §1 of `conq-implementation-spec-FINAL.md`. Three arms hit a fake
+Reproduces §1 of `qfence-implementation-spec-FINAL.md`. Three arms hit a fake
 upstream with a rolling 5-per-1000ms limit and 30% transient-503 injection.
 
 ```
@@ -14,11 +14,11 @@ node bench/motivation/run.mjs --full    # spec config: N=200, windowMs=1000, 3 s
   fire on `p-retry`'s internal timer inside a single queue slot, so the queue's
   rate-limit governor never sees them. Result: retry storm, budget exhaustion,
   large task loss.
-- **B** — a `c-queue`-style queue: every attempt (first or retry) re-acquires a
+- **B** — a `qfence`-style queue: every attempt (first or retry) re-acquires a
   rate-limit token before firing. Same technique the shipped library uses.
 - **C** — stock `p-queue`, no `p-retry`; retries are manually re-enqueued via
   `queue.add`. ~12 lines. Matches arm B in behaviour — the fix is
-  "retries must re-enter admission control," not "use c-queue."
+  "retries must re-enter admission control," not "use qfence."
 
 The zero-latency channel keeps arms B and C at or near zero 429s because client
 and server share a single `Date.now()`. With latency applied before upstream

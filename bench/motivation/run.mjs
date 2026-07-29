@@ -1,4 +1,4 @@
-// Reproduce §1 of conq-implementation-spec-FINAL.md:
+// Reproduce §1 of qfence-implementation-spec-FINAL.md:
 // arms A/B/C, seeded, plus a jittered-latency probe.
 //
 // Defaults: SCALED-TIME mode (windowMs=50, N=100, seeds=[1]) so the whole run
@@ -57,7 +57,7 @@ console.log('\n== Zero-latency channel ==');
 const zeroLat = () => 0;
 const zeroRows = [
   await runArm('A: p-queue + p-retry', armA, zeroLat),
-  await runArm('B: c-queue-style (inline)', armBSettled, zeroLat),
+  await runArm('B: qfence-style (inline)', armBSettled, zeroLat),
   await runArm('C: p-queue + manual re-add', armC, zeroLat),
 ];
 for (const row of zeroRows) console.log(fmt(row));
@@ -66,7 +66,7 @@ console.log('\n== Jittered latency probe ==');
 const jitter = (rand) => 5 + Math.floor(rand() * 15);
 const jitterRows = [
   await runArm('A: p-queue + p-retry', armA, jitter),
-  await runArm('B: c-queue-style (inline)', armBSettled, jitter),
+  await runArm('B: qfence-style (inline)', armBSettled, jitter),
   await runArm('C: p-queue + manual re-add', armC, jitter),
 ];
 for (const row of jitterRows) console.log(fmt(row));
