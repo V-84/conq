@@ -18,7 +18,7 @@ import {
  *
  * @example
  * ```ts
- * import { Queue } from 'con-q';
+ * import { Queue } from 'c-queue';
  * const q = new Queue({ concurrency: 2 });
  * const r = await q.add(async () => 42);
  * await q.onIdle();
@@ -59,7 +59,7 @@ interface QueuedTask extends HeapItem {
  *
  * @example
  * ```ts
- * import { Queue } from 'con-q';
+ * import { Queue } from 'c-queue';
  * const queue = new Queue({ concurrency: 2 });
  * const value = await queue.add(async () => 42);
  * await queue.onIdle();

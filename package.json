@@ -1,5 +1,5 @@
 {
-  "name": "con-q",
+  "name": "c-queue",
   "version": "1.0.0",
   "description": "Bounded async concurrency with retry integrated into admission control. Zero deps. ESM + CJS.",
   "type": "module",

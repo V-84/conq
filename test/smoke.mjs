@@ -1,7 +1,7 @@
 // ESM smoke: exercises mapConcurrent, Queue, retry, abort, timeout against the
 // packed tarball installed into a scratch dir (see test/smoke.test.ts).
 import { strict as assert } from 'node:assert';
-import { AbortError, Queue, TimeoutError, mapConcurrent, withRetry } from 'con-q';
+import { AbortError, Queue, TimeoutError, mapConcurrent, withRetry } from 'c-queue';
 
 const r = await mapConcurrent([1, 2, 3, 4], async (n) => n * 2, { concurrency: 2 });
 assert.deepEqual(r, [2, 4, 6, 8]);

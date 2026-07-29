@@ -45,7 +45,7 @@ export function normalizeRetry(r?: RetryOptions): NormalizedRetry {
   const jitter = r.jitter ?? 'full';
   if (jitter !== 'none' && jitter !== 'full' && jitter !== 'equal') {
     throw new TypeError(
-      `con-q: 'jitter' must be 'none' | 'full' | 'equal', received ${String(jitter)}`,
+      `c-queue: 'jitter' must be 'none' | 'full' | 'equal', received ${String(jitter)}`,
     );
   }
   const isRetryable = r.isRetryable ?? defaultIsRetryable;
@@ -76,7 +76,7 @@ function defaultIsRetryable(err: unknown): boolean {
  *
  * @example
  * ```ts
- * import { withRetry } from 'con-q';
+ * import { withRetry } from 'c-queue';
  * const t = withRetry(async () => fetch('/x').then(r => r.json()), { attempts: 3 });
  * await t({ signal: new AbortController().signal, attempt: 0 });
  * ```

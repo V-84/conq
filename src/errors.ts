@@ -3,7 +3,7 @@
  *
  * @example
  * ```ts
- * import { mapConcurrent, TimeoutError } from 'con-q';
+ * import { mapConcurrent, TimeoutError } from 'c-queue';
  * try {
  *   await mapConcurrent([1], async () => new Promise(() => {}), { timeoutMs: 50 });
  * } catch (err) {
@@ -28,7 +28,7 @@ export class TimeoutError extends Error {
  *
  * @example
  * ```ts
- * import { mapConcurrent, AbortError } from 'con-q';
+ * import { mapConcurrent, AbortError } from 'c-queue';
  * const ac = new AbortController(); ac.abort('user cancelled');
  * try { await mapConcurrent([1], async () => 1, { signal: ac.signal }); }
  * catch (err) { if (err instanceof AbortError) console.log(err.cause); }
