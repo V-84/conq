@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/V-84/conq/actions/workflows/ci.yml/badge.svg)](https://github.com/V-84/conq/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/V-84/conq/graph/badge.svg?token=a6764b50-c5c4-4a96-b798-2029ba9b6a3d)](https://codecov.io/gh/V-84/conq)
-[![npm](https://img.shields.io/npm/v/conq)](https://www.npmjs.com/package/conq)
+[![npm](https://img.shields.io/npm/v/con-q)](https://www.npmjs.com/package/con-q)
 
 Bounded async concurrency with retry integrated into admission control.
 Zero runtime dependencies. ESM **and** CommonJS. Full TypeScript types.
@@ -26,20 +26,20 @@ await mapConcurrent(promises, (promise) => promise, { concurrency: 2 });
 Pass plain values and create each Promise inside the worker instead:
 
 ```js
-import { mapConcurrent } from 'conq';
+import { mapConcurrent } from 'con-q';
 
 await mapConcurrent(urls, (url) => fetch(url), { concurrency: 2 });
 // Only two fetches are started at once.
 ```
 
 ```bash
-npm install conq
+npm install con-q
 ```
 
 ## Quick start
 
 ```js
-import { mapConcurrent } from 'conq';
+import { mapConcurrent } from 'con-q';
 
 // Process 100 URLs, 5 at a time, with retry
 const results = await mapConcurrent(urls, async (url) => {
@@ -83,7 +83,7 @@ mistake, and CommonJS support.
 Map a worker over items with bounded concurrency. Results preserve input order.
 
 ```ts
-import { mapConcurrent } from 'conq';
+import { mapConcurrent } from 'con-q';
 
 const doubled = await mapConcurrent([1, 2, 3, 4, 5], async (n) => n * 2, {
   concurrency: 2,
@@ -125,7 +125,7 @@ await mapConcurrent(items, worker, { concurrency: 4, stopOnError: false });
 Like `mapConcurrent` but never rejects for task failures. Returns per-item settled results.
 
 ```ts
-import { mapSettled } from 'conq';
+import { mapSettled } from 'con-q';
 
 const results = await mapSettled([1, 2, 3], async (n) => {
   if (n === 2) throw new Error('bad');
@@ -142,7 +142,7 @@ const results = await mapSettled([1, 2, 3], async (n) => {
 Fire-and-forget variant. Discards results for O(concurrency) memory on large streams.
 
 ```ts
-import { forEachConcurrent } from 'conq';
+import { forEachConcurrent } from 'con-q';
 
 await forEachConcurrent(hugeStream, async (record) => {
   await db.insert(record);
@@ -175,7 +175,7 @@ await forEachConcurrent(fetchPages(), async (item) => processItem(item), {
 For long-lived in-process queues with priority, pause/resume, and dynamic concurrency.
 
 ```ts
-import { Queue } from 'conq';
+import { Queue } from 'con-q';
 
 const q = new Queue({ concurrency: 4 });
 
@@ -233,7 +233,7 @@ with admission control — for that, use `mapConcurrent` or `Queue` with the
 `retry` option.
 
 ```ts
-import { withRetry } from 'conq';
+import { withRetry } from 'con-q';
 
 const resilientTask = withRetry(async (ctx) => {
   const res = await fetch('/api', { signal: ctx.signal });
@@ -246,7 +246,7 @@ const result = await resilientTask({ signal: controller.signal, attempt: 0 });
 ## Error types
 
 ```ts
-import { TimeoutError, AbortError } from 'conq';
+import { TimeoutError, AbortError } from 'con-q';
 
 try {
   await mapConcurrent(items, worker, { timeoutMs: 5000 });

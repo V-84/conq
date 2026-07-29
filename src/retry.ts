@@ -76,7 +76,7 @@ function defaultIsRetryable(err: unknown): boolean {
  *
  * @example
  * ```ts
- * import { withRetry } from 'conq';
+ * import { withRetry } from 'con-q';
  * const t = withRetry(async () => fetch('/x').then(r => r.json()), { attempts: 3 });
  * await t({ signal: new AbortController().signal, attempt: 0 });
  * ```

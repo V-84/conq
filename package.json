@@ -1,6 +1,6 @@
 {
-  "name": "conq",
-  "version": "0.1.0",
+  "name": "con-q",
+  "version": "1.0.0",
   "description": "Bounded async concurrency with retry integrated into admission control. Zero deps. ESM + CJS.",
   "type": "module",
   "sideEffects": false,

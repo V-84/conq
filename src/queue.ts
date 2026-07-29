@@ -18,7 +18,7 @@ import {
  *
  * @example
  * ```ts
- * import { Queue } from 'conq';
+ * import { Queue } from 'con-q';
  * const q = new Queue({ concurrency: 2 });
  * const r = await q.add(async () => 42);
  * await q.onIdle();
