@@ -1,7 +1,7 @@
 # c-queue
 
-[![CI](https://github.com/V-84/conq/actions/workflows/ci.yml/badge.svg)](https://github.com/V-84/conq/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/V-84/conq/graph/badge.svg?token=a6764b50-c5c4-4a96-b798-2029ba9b6a3d)](https://codecov.io/gh/V-84/conq)
+[![CI](https://github.com/V-84/c-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/V-84/c-queue/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/V-84/c-queue/graph/badge.svg?token=a6764b50-c5c4-4a96-b798-2029ba9b6a3d)](https://codecov.io/gh/V-84/c-queue)
 [![npm](https://img.shields.io/npm/v/c-queue)](https://www.npmjs.com/package/c-queue)
 
 Bounded async concurrency with retry integrated into admission control.

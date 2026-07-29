@@ -1,6 +1,6 @@
 # `c-queue` — Final Implementation Specification
 
-**Package:** `c-queue` (npm) · **Repo:** `github.com/v-84/conq` · **Import identifier:** `c-queue`
+**Package:** `c-queue` (npm) · **Repo:** `github.com/v-84/c-queue` · **Import identifier:** `c-queue`
 **Audience:** an autonomous coding agent implementing this from scratch.
 **Status:** self-contained and authoritative. This supersedes all earlier drafts (`taskq-*`). Where this document and any prior note disagree, this document wins.
 **Deliverable:** a small, honest, zero-dependency Node.js + TypeScript library that bounds async concurrency *and* integrates retry correctly with rate limiting.
@@ -327,7 +327,7 @@ Do **not** install `@typescript/native-preview` (`tsgo` nightly). The stable `ty
   "sideEffects": false,
   "engines": { "node": ">=20" },
   "files": ["dist"],
-  "repository": { "type": "git", "url": "git+https://github.com/v-84/conq.git" },
+  "repository": { "type": "git", "url": "git+https://github.com/v-84/c-queue.git" },
   "exports": {
     ".": {
       "import": { "types": "./dist/esm/index.d.ts", "default": "./dist/esm/index.js" },

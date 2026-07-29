@@ -10,7 +10,7 @@
   "files": ["dist", "README.md", "LICENSE"],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/v-84/conq.git"
+    "url": "git+https://github.com/v-84/c-queue.git"
   },
   "license": "MIT",
   "keywords": [
