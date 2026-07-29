@@ -1,4 +1,4 @@
-// Reproduce §1 of c-queue-implementation-spec-FINAL.md:
+// Reproduce §1 of conq-implementation-spec-FINAL.md:
 // arms A/B/C, seeded, plus a jittered-latency probe.
 //
 // Defaults: SCALED-TIME mode (windowMs=50, N=100, seeds=[1]) so the whole run

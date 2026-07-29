@@ -17,7 +17,9 @@ export function validatePositiveIntOrInfinity(name: string, value: unknown): num
 
 export function validatePositiveInt(name: string, value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
-    throw new TypeError(`c-queue: '${name}' must be a positive integer, received ${describe(value)}`);
+    throw new TypeError(
+      `c-queue: '${name}' must be a positive integer, received ${describe(value)}`,
+    );
   }
   return value;
 }
