@@ -45,7 +45,7 @@ export function normalizeRetry(r?: RetryOptions): NormalizedRetry {
   const jitter = r.jitter ?? 'full';
   if (jitter !== 'none' && jitter !== 'full' && jitter !== 'equal') {
     throw new TypeError(
-      `conq: 'jitter' must be 'none' | 'full' | 'equal', received ${String(jitter)}`,
+      `con-q: 'jitter' must be 'none' | 'full' | 'equal', received ${String(jitter)}`,
     );
   }
   const isRetryable = r.isRetryable ?? defaultIsRetryable;

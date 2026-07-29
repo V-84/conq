@@ -1,4 +1,4 @@
-# conq
+# con-q
 
 [![CI](https://github.com/V-84/conq/actions/workflows/ci.yml/badge.svg)](https://github.com/V-84/conq/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/V-84/conq/graph/badge.svg?token=a6764b50-c5c4-4a96-b798-2029ba9b6a3d)](https://codecov.io/gh/V-84/conq)
@@ -14,12 +14,12 @@ Promises to a queue:
 
 ```js
 // readme-expect-error: TypeError
-// broken: every fetch has already started before conq sees it
+// broken: every fetch has already started before con-q sees it
 const promises = urls.map(
   (url) => new Promise((resolve, reject) => fetch(url).then(resolve, reject)),
 );
 await mapConcurrent(promises, (promise) => promise, { concurrency: 2 });
-// -> TypeError: conq: input[0] is a Promise, not a value.
+// -> TypeError: con-q: input[0] is a Promise, not a value.
 // All requests have already started, so the concurrency limit cannot govern them.
 ```
 
@@ -51,7 +51,7 @@ const results = await mapConcurrent(urls, async (url) => {
 });
 ```
 
-## Why conq?
+## Why con-q?
 
 Compose `p-queue` + `p-retry` the obvious way and retries silently escape the
 rate limiter. In our [motivating experiment](bench/motivation/) (200 tasks,
@@ -60,19 +60,19 @@ rate limiter. In our [motivating experiment](bench/motivation/) (200 tasks,
 compliant arms lost 0–2%; the robust headline remains the specified
 **roughly 29%-vs-2% gap**.
 
-`conq` makes retries re-enter admission control by default, so this cannot happen.
+`con-q` makes retries re-enter admission control by default, so this cannot happen.
 
 **`strict: true` barely helps arm A.** It reduces the burst, but task loss
 remains because retries still fire outside the queue.
 
 **Arms B and C are near-identical.** The fix is “retries must re-enter
-admission control,” not “use conq.” Their perfect zero-429 zero-latency result
+admission control,” not “use con-q.” Their perfect zero-429 zero-latency result
 is partly an in-process clock artifact; the jittered probe is the defensible
 comparison and leaves a roughly 29%-vs-2% task-loss gap.
 
 **You can close most of this gap in ~12 lines on stock `p-queue`** by
 re-enqueueing retries via `queue.add` instead of wrapping with `p-retry`. What
-`conq` gives you on top of that: correct-by-default retry, first-error abort
+`con-q` gives you on top of that: correct-by-default retry, first-error abort
 that awaits in-flight settlement, a runtime guard for the eager-promise
 mistake, and CommonJS support.
 
@@ -321,7 +321,7 @@ void context;
   constraint, not a library one.
 - **Retry holds its concurrency slot** across the backoff delay, but
   **re-acquires a rate-limit token** before the next attempt. This is the core
-  of what `conq` does differently.
+  of what `con-q` does differently.
 - **`stopOnError: true` (default) awaits every in-flight task's settlement
   before rejecting.** No orphan promises mutating shared state after your
   `.catch` runs.
@@ -332,7 +332,7 @@ void context;
 
 ## Comparison
 
-| Feature | `Promise.all` | `p-limit` | `p-map` | `p-queue` | **conq** |
+| Feature | `Promise.all` | `p-limit` | `p-map` | `p-queue` | **con-q** |
 |---|---|---|---|---|---|
 | Bounded concurrency | - | yes | yes | yes | yes (parity) |
 | Order-preserving results | yes | via wrapping | yes | via `addAll` | yes (parity) |
@@ -348,16 +348,16 @@ void context;
 | **First-error abort awaits in-flight** | - (`Promise.all` abandons) | n/a | - | - | **yes** |
 | **Runtime eager-promise guard** | - | - | - | - | **yes** |
 
-Everything above the bold rows is table stakes `conq` matches. The bold rows
+Everything above the bold rows is table stakes `con-q` matches. The bold rows
 are the four things that differentiate it.
 
-## When you should not use conq
+## When you should not use con-q
 
 - You already use `p-queue` and are comfortable writing ~12 lines to
   re-enqueue retries. There is nothing else here you can't get.
 - You need persistence, dead-letter queues, or distributed queuing. That is
-  BullMQ / SQS / RabbitMQ territory. `conq` is in-process only.
-- You need worker threads or real parallelism. `conq` is cooperative I/O
+  BullMQ / SQS / RabbitMQ territory. `con-q` is in-process only.
+- You need worker threads or real parallelism. `con-q` is cooperative I/O
   concurrency.
 
 ## Reproducing the benchmark

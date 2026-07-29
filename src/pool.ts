@@ -58,7 +58,7 @@ export function normalizeCommonOptions(o: RunOptions): NormalizedCommon {
   const hasCap = o.intervalCap !== undefined;
   if (hasInt !== hasCap) {
     throw new TypeError(
-      `conq: 'intervalMs' and 'intervalCap' must be provided together or not at all`,
+      `con-q: 'intervalMs' and 'intervalCap' must be provided together or not at all`,
     );
   }
   if (hasInt && hasCap) {

@@ -9,7 +9,7 @@ export function validatePositiveIntOrInfinity(name: string, value: unknown): num
   if (value === Number.POSITIVE_INFINITY) return value;
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
     throw new TypeError(
-      `conq: '${name}' must be a positive integer or Infinity, received ${describe(value)}`,
+      `con-q: '${name}' must be a positive integer or Infinity, received ${describe(value)}`,
     );
   }
   return value;
@@ -17,7 +17,7 @@ export function validatePositiveIntOrInfinity(name: string, value: unknown): num
 
 export function validatePositiveInt(name: string, value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
-    throw new TypeError(`conq: '${name}' must be a positive integer, received ${describe(value)}`);
+    throw new TypeError(`con-q: '${name}' must be a positive integer, received ${describe(value)}`);
   }
   return value;
 }
@@ -25,7 +25,7 @@ export function validatePositiveInt(name: string, value: unknown): number {
 export function validateNonNegativeInt(name: string, value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
     throw new TypeError(
-      `conq: '${name}' must be a non-negative integer, received ${describe(value)}`,
+      `con-q: '${name}' must be a non-negative integer, received ${describe(value)}`,
     );
   }
   return value;
@@ -34,7 +34,7 @@ export function validateNonNegativeInt(name: string, value: unknown): number {
 export function validateNonNegativeFinite(name: string, value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     throw new TypeError(
-      `conq: '${name}' must be a non-negative finite number, received ${describe(value)}`,
+      `con-q: '${name}' must be a non-negative finite number, received ${describe(value)}`,
     );
   }
   return value;
@@ -43,7 +43,7 @@ export function validateNonNegativeFinite(name: string, value: unknown): number 
 export function validateFactor(name: string, value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 1) {
     throw new TypeError(
-      `conq: '${name}' must be a finite number >= 1, received ${describe(value)}`,
+      `con-q: '${name}' must be a finite number >= 1, received ${describe(value)}`,
     );
   }
   return value;
@@ -57,11 +57,11 @@ export function assertTaskFunction(value: unknown, index: number, label = 'task'
   if (typeof value === 'function') return;
   if (isThenable(value)) {
     throw new TypeError(
-      `conq: expected a ${label} function, received a Promise at index ${index}.\nA Promise starts running the moment it is created, so passing one here means the\nwork has already begun and concurrency cannot be limited. Wrap it in a function:\n  conq.mapConcurrent(items, (item) => doWork(item))`,
+      `con-q: expected a ${label} function, received a Promise at index ${index}.\nA Promise starts running the moment it is created, so passing one here means the\nwork has already begun and concurrency cannot be limited. Wrap it in a function:\n  con-q.mapConcurrent(items, (item) => doWork(item))`,
     );
   }
   throw new TypeError(
-    `conq: expected a ${label} function at index ${index}, received ${describe(value)}`,
+    `con-q: expected a ${label} function at index ${index}, received ${describe(value)}`,
   );
 }
 
@@ -104,7 +104,7 @@ export function assertPulledValueNotThenable(value: unknown, index: number): voi
 
 function throwInputPromise(index: number): never {
   throw new TypeError(
-    `conq: input[${index}] is a Promise, not a value.\nPassing already-created Promises means the work has already started, so conq\ncannot bound concurrency or rate. Pass plain items and do the work in the worker:\n  conq.mapConcurrent(items, (item) => doWork(item))`,
+    `con-q: input[${index}] is a Promise, not a value.\nPassing already-created Promises means the work has already started, so con-q\ncannot bound concurrency or rate. Pass plain items and do the work in the worker:\n  con-q.mapConcurrent(items, (item) => doWork(item))`,
   );
 }
 
